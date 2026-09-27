@@ -97,8 +97,13 @@ COPY --from=assets  /app/public/build ./public/build
 COPY . .
 
 # Now that artisan and the full tree exist, finish what --no-scripts skipped.
+# The runtime base is php-fpm-alpine, which ships no composer, so borrow the
+# binary from the vendor stage for this one step and drop it again - composer
+# has no business being present in a production image.
+COPY --from=vendor /usr/bin/composer /usr/local/bin/composer
 RUN composer dump-autoload --no-dev --optimize --classmap-authoritative \
-    && php artisan package:discover --ansi
+    && php artisan package:discover --ansi \
+    && rm -f /usr/local/bin/composer
 
 # storage/ and bootstrap/cache must be writable by the FPM worker user.
 RUN mkdir -p storage/framework/{cache,sessions,testing,views} storage/logs bootstrap/cache \

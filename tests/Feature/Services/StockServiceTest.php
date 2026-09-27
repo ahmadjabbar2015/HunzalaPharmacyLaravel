@@ -15,10 +15,9 @@
 use App\Models\Item;
 use App\Models\ItemBatch;
 use App\Models\StockTransaction;
+use App\Models\User;
 use App\Services\StockService;
 use Illuminate\Support\Facades\DB;
-
-const DEVICE = 'PC1';
 
 beforeEach(function () {
     $this->stock = app(StockService::class);
@@ -190,7 +189,7 @@ it('stores a sale as a negative movement and a return as a positive one', functi
 });
 
 it('stamps the origin device and the performing user on every row', function () {
-    $user = \App\Models\User::factory()->create();
+    $user = User::factory()->create();
 
     $txn = $this->stock->receive(
         itemUuid: $this->item->uuid,

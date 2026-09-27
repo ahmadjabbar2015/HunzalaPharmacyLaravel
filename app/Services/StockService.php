@@ -79,7 +79,7 @@ class StockService
      * 50. Any screen showing more than one item's stock must use this instead.
      *
      * @param  list<string>  $itemUuids
-     * @return array<string, int>  every uuid asked for, defaulting to 0
+     * @return array<string, int> every uuid asked for, defaulting to 0
      */
     public function quantitiesFor(array $itemUuids): array
     {
@@ -147,7 +147,7 @@ class StockService
      * @param  string|null  $reason  REQUIRED when $transactionType is 'adjustment'
      *
      * @throws InvalidArgumentException on an unknown type, a zero change, or a
-     *                                 missing adjustment reason
+     *                                  missing adjustment reason
      */
     public function record(
         string $itemUuid,

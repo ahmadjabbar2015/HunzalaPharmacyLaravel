@@ -5,41 +5,49 @@ namespace Database\Factories;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 /**
  * @extends Factory<User>
  */
 class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
-    protected static ?string $password;
+    protected $model = User::class;
 
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
-            'remember_token' => Str::random(10),
+            'username' => fake()->unique()->userName(),
+            'full_name' => fake()->name(),
+            'phone' => fake()->numerify('03##-#######'),
+            'role' => 'staff',
+            'password_hash' => Hash::make('password'),
+            'is_active' => true,
         ];
     }
 
-    /**
-     * Indicate that the model's email address should be unverified.
-     */
-    public function unverified(): static
+    public function manager(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'email_verified_at' => null,
-        ]);
+        return $this->state(['role' => 'manager']);
+    }
+
+    public function owner(): static
+    {
+        return $this->state(['role' => 'owner']);
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(['is_active' => false]);
+    }
+
+    /**
+     * A PIN this user can be identified by at the till. Explicit rather than a
+     * default, because PINs must be unique among active users and a factory
+     * handing every user the same one would violate that the moment a test
+     * created two.
+     */
+    public function withPin(string $pin): static
+    {
+        return $this->state(['pin_hash' => Hash::make($pin)]);
     }
 }

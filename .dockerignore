@@ -1,0 +1,44 @@
+# Keeping these out of the build context is not only about image size: .env
+# carries production credentials and must reach the container as runtime
+# environment, never baked into a layer that anyone with the image can read.
+.env
+.env.*
+!.env.example
+auth.json
+
+.git
+.gitignore
+.github
+
+# Reinstalled inside the image, and a host install may carry native extensions
+# built for the wrong architecture.
+vendor
+node_modules
+
+# Rebuilt by the assets stage.
+public/build
+public/hot
+public/storage
+
+# Runtime state. Baking a host machine's cached config or logs into the image
+# is how a stale APP_URL survives three deployments.
+storage/app/*
+!storage/app/.gitignore
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+bootstrap/cache/*
+
+backups
+tests
+phpunit.xml
+.phpunit.cache
+.phpunit.result.cache
+
+.idea
+.vscode
+.zed
+.DS_Store
+Thumbs.db
+*.log

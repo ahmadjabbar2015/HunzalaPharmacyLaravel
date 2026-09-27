@@ -1,0 +1,197 @@
+# HunZala Pharmacy - production stack.
+#
+#   cp .env.docker.example .env
+#   edit .env  (set APP_KEY, the DB passwords and NGINX_SERVER_NAME)
+#   docker compose up -d --build
+#
+# Deliberately five small services rather than one large one: a queue worker
+# that dies must not take the POS down with it, and a backup must not depend on
+# the app being healthy. See DEPLOY_DOCKER.md.
+
+name: hunzala-pharmacy
+
+# The app, queue worker and scheduler run the same image with the same
+# environment and differ only in CONTAINER_ROLE. Defined once here.
+x-app: &app
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+    # Explicit, because the nginx stage (web) comes later in the file and would
+    # otherwise be picked up as the default target.
+    target: runtime
+  image: hunzala-pharmacy:latest
+  restart: unless-stopped
+  depends_on:
+    mysql:
+      condition: service_healthy
+  env_file: .env
+  volumes:
+    # Receipt logos and anything uploaded must outlive the container.
+    - app-storage:/var/www/html/storage/app
+    - app-logs:/var/www/html/storage/logs
+  networks: [pharmacy]
+
+services:
+
+  app:
+    <<: *app
+    environment:
+      CONTAINER_ROLE: app
+    # Not published to the host: nginx reaches FPM over the private network,
+    # and port 9000 must never be exposed to the internet.
+    expose: ["9000"]
+
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      # Stage 4 of the app Dockerfile: nginx carrying its own copy of public/.
+      target: web
+    image: hunzala-pharmacy-web:latest
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # Substituted into default.conf.template by the nginx image's own
+      # envsubst step on the templates directory.
+      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-localhost}
+    volumes:
+      - certs:/etc/nginx/certs
+      - certbot-webroot:/var/www/certbot
+    networks: [pharmacy]
+    healthcheck:
+      # Hits the plain-HTTP /healthz, which answers 200 directly instead of
+      # redirecting to HTTPS - following that redirect into a self-signed
+      # bootstrap certificate would report a healthy nginx as unhealthy.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    command:
+      # utf8mb4 everywhere; see docker/mysql/my.cnf for why the collation is
+      # pinned rather than left to the image default.
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-hunzala_pharmacy}
+      MYSQL_USER: ${DB_USERNAME:-pharmacy}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD must be set in .env}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/pharmacy.cnf:ro
+      - mysql-logs:/var/log/mysql
+    # Not published. The database is reachable only from this network; to
+    # inspect it use `docker compose exec mysql mysql -u root -p`.
+    expose: ["3306"]
+    networks: [pharmacy]
+    healthcheck:
+      # The app's entrypoint waits on this. Without it, migrations would run
+      # against a server that is listening but not yet ready.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # appendonly keeps queued jobs across a restart. A queued receipt print or
+    # a pending report is small, but losing it silently is confusing.
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    volumes:
+      - redis-data:/data
+    expose: ["6379"]
+    networks: [pharmacy]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  queue:
+    <<: *app
+    environment:
+      CONTAINER_ROLE: queue
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      # Waits for the app container so migrations have run before a job can
+      # touch a table that does not exist yet.
+      app:
+        condition: service_started
+
+  scheduler:
+    <<: *app
+    environment:
+      CONTAINER_ROLE: scheduler
+    depends_on:
+      mysql:
+        condition: service_healthy
+      app:
+        condition: service_started
+
+  backup:
+    build:
+      context: ./docker/backup
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      BACKUP_HOUR: ${BACKUP_HOUR:-3}
+      BACKUP_RETAIN_DAYS: ${BACKUP_RETAIN_DAYS:-30}
+    volumes:
+      # A bind mount, not a named volume, so the dumps are visible on the host
+      # and an off-server copy is a plain rsync of a directory you can see.
+      - ./backups:/backups
+    networks: [pharmacy]
+
+  # --------------------------------------------------------------------------
+  # Run on demand, not as part of `up`. Hence the profile.
+  # --------------------------------------------------------------------------
+
+  certbot:
+    image: certbot/certbot:latest
+    profiles: [tools]
+    volumes:
+      - certs:/etc/nginx/certs
+      - certbot-webroot:/var/www/certbot
+      - letsencrypt:/etc/letsencrypt
+    # webroot rather than standalone: nginx already owns port 80 and must keep
+    # serving the redirect while the challenge is answered.
+    entrypoint: >
+      sh -c "certbot certonly --webroot -w /var/www/certbot
+             --non-interactive --agree-tos
+             --email ${CERTBOT_EMAIL:-admin@example.com}
+             -d ${NGINX_SERVER_NAME:-localhost}
+             && cp -L /etc/letsencrypt/live/${NGINX_SERVER_NAME:-localhost}/fullchain.pem /etc/nginx/certs/fullchain.pem
+             && cp -L /etc/letsencrypt/live/${NGINX_SERVER_NAME:-localhost}/privkey.pem  /etc/nginx/certs/privkey.pem
+             && echo 'Certificate installed. Now run: docker compose exec nginx nginx -s reload'"
+    networks: [pharmacy]
+
+volumes:
+  mysql-data:
+  mysql-logs:
+  redis-data:
+  app-storage:
+  app-logs:
+  certs:
+  certbot-webroot:
+  letsencrypt:
+
+networks:
+  pharmacy:
+    driver: bridge

@@ -1,0 +1,106 @@
+# The shop's oldest client is Chrome 109 on Windows Server 2008 (see
+# DEPLOYMENT_WEB.md §1). Every TLS and header choice below keeps that browser
+# working - it speaks TLS 1.2 and 1.3, so TLS 1.0/1.1 can stay off.
+
+upstream php-fpm {
+    server app:9000;
+}
+
+# Port 80 exists only to answer the ACME challenge and redirect. Nothing in
+# the application is ever served unencrypted: staff log in over this.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name _;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # Answers 200 on plain HTTP so the container healthcheck never has to
+    # follow the redirect below into TLS. Deliberately says nothing about the
+    # application or the database - it is a liveness probe, not a status page.
+    location = /healthz {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 "ok\n";
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name ${NGINX_SERVER_NAME};
+
+    ssl_certificate     /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # 180 days rather than the usual two years: long enough to be meaningful,
+    # short enough that a certificate mistake is recoverable in one season.
+    add_header Strict-Transport-Security "max-age=15552000" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Referrer-Policy "same-origin" always;
+
+    root /var/www/html/public;
+    index index.php;
+
+    charset utf-8;
+
+    # A CSV price list is the largest thing anyone uploads; matches
+    # php.ini's post_max_size.
+    client_max_body_size 20M;
+
+    access_log /dev/stdout;
+    error_log  /dev/stderr warn;
+
+    # Hashed Vite output is immutable, so it can be cached hard.
+    location /build/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ ^/index\.php$ {
+        fastcgi_pass php-fpm;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT $realpath_root;
+        fastcgi_hide_header X-Powered-By;
+
+        # A month-long report is the slowest request in the app. php.ini caps
+        # execution at 60s; allow a little more so nginx is not the one to
+        # cut it off first with a confusing 504.
+        fastcgi_read_timeout 90s;
+    }
+
+    # Any other .php path is an attempt to reach a file directly - there is
+    # only one front controller.
+    location ~ \.php$ {
+        return 404;
+    }
+
+    # Never serve dotfiles. .env lives outside public/, but defence in depth.
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}

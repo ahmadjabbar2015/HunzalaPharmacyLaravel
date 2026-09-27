@@ -75,6 +75,8 @@ RUN apk add --no-cache \
         pcntl \
         pdo_mysql \
         zip \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
     && apk del .build-deps
 
 # bcmath          - brick/math's fast backend for decimal money arithmetic.
@@ -85,6 +87,10 @@ RUN apk add --no-cache \
 # pcntl           - queue workers need signal handling to shut down cleanly
 #                   instead of being killed mid-job.
 # opcache         - see php/opcache.ini; the single biggest production win.
+# redis           - CACHE_STORE and QUEUE_CONNECTION are both redis, and
+#                   migrate --isolated takes its lock through the cache
+#                   store, so without phpredis the container cannot even
+#                   boot. From PECL: there is no alpine package for it.
 
 WORKDIR /var/www/html
 

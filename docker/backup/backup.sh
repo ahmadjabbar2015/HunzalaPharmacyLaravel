@@ -17,7 +17,11 @@ echo "[backup] dumping ${DB_DATABASE} -> $TARGET"
 
 # --single-transaction dumps from one consistent snapshot without locking the
 # tables, so a sale rung mid-backup neither blocks nor lands half-recorded.
+# --skip-ssl: the MariaDB client in this image verifies the server cert by
+# default, which MySQL 8's self-signed cert fails. Without it every nightly
+# dump exits non-zero and no backup is ever written.
 mysqldump \
+    --skip-ssl \
     --host="${DB_HOST}" \
     --port="${DB_PORT:-3306}" \
     --user="${DB_USERNAME}" \

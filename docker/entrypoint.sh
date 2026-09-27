@@ -13,7 +13,14 @@ wait_for_database() {
     echo "[entrypoint] waiting for ${DB_HOST}:${DB_PORT:-3306} ..."
 
     i=0
+    # The alpine mysql-client package is the MariaDB client, and its 11.x
+    # series verifies the server certificate by default. MySQL 8 presents an
+    # auto-generated self-signed cert, so the handshake is rejected and this
+    # wait can never succeed. --skip-ssl matches what pdo_mysql already does
+    # on this container-private network, where there is no public transport
+    # to protect.
     until mysqladmin ping \
+            --skip-ssl \
             --host="${DB_HOST}" \
             --port="${DB_PORT:-3306}" \
             --user="${DB_USERNAME}" \

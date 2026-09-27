@@ -34,12 +34,12 @@ if [ "$TARGET_DB" = "$DB_DATABASE" ]; then
     [ "$confirm" = "$TARGET_DB" ] || { echo "aborted"; exit 1; }
 fi
 
-mysql --host="$DB_HOST" --port="${DB_PORT:-3306}" \
+mysql --skip-ssl --host="$DB_HOST" --port="${DB_PORT:-3306}" \
       --user="$DB_USERNAME" --password="$DB_PASSWORD" \
       -e "CREATE DATABASE IF NOT EXISTS \`$TARGET_DB\`
           CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
 
-gunzip < "$FILE" | mysql --host="$DB_HOST" --port="${DB_PORT:-3306}" \
+gunzip < "$FILE" | mysql --skip-ssl --host="$DB_HOST" --port="${DB_PORT:-3306}" \
       --user="$DB_USERNAME" --password="$DB_PASSWORD" "$TARGET_DB"
 
 echo "restored $FILE into $TARGET_DB"

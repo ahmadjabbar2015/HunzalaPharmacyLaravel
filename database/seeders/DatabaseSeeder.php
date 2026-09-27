@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -12,14 +11,23 @@ class DatabaseSeeder extends Seeder
 
     /**
      * Seed the application's database.
+     *
+     * Dummy data is deliberately gated on the environment. `db:seed` with no
+     * arguments is easy to run against the wrong database, and this project's
+     * seed data carries published passwords - it must never be one typo away
+     * from a live shop's records.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        if (app()->environment('production')) {
+            $this->command?->warn(
+                'Skipped: no seed data is defined for production. '
+                .'For a throwaway dataset run: php artisan db:seed --class=DummyDataSeeder'
+            );
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+            return;
+        }
+
+        $this->call(DummyDataSeeder::class);
     }
 }

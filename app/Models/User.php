@@ -2,31 +2,60 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+use Illuminate\Auth\Authenticatable as AuthenticatableTrait;
+use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+/**
+ * Staff, manager, or owner. The PIN is the identity at the point of sale:
+ * it is unique among active users, so entering it says who completed a sale.
+ */
+class User extends BaseModel implements Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use AuthenticatableTrait;
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    protected $table = 'users';
+
+    protected $hidden = ['password_hash', 'pin_hash'];
+
+    protected $attributes = [
+        'role' => 'staff',
+        'is_active' => true,
+        'pin_failed_attempts' => 0,
+    ];
+
+    protected function modelCasts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'is_active' => 'boolean',
+            'pin_failed_attempts' => 'integer',
+            'pin_locked_until' => 'datetime',
         ];
+    }
+
+    public function getAuthPassword(): string
+    {
+        return $this->password_hash ?? '';
+    }
+
+    public function isOwner(): bool
+    {
+        return $this->role === 'owner';
+    }
+
+    public function isManagerOrOwner(): bool
+    {
+        return in_array($this->role, ['manager', 'owner'], true);
+    }
+
+    public function isPinLocked(): bool
+    {
+        return $this->pin_locked_until !== null
+            && $this->pin_locked_until->isFuture();
+    }
+
+    public function presence(): HasMany
+    {
+        return $this->hasMany(StaffPresence::class, 'user_uuid', 'uuid');
     }
 }

@@ -207,12 +207,15 @@ replaced on its own.
 
 ## 8. Known gaps
 
-- **The image build has not been run in CI.** It builds a Laravel 13 / PHP 8.3
-  image with `bcmath`, `gd`, `intl`, `opcache`, `pcntl`, `pdo_mysql` and `zip`,
-  but confirm `docker compose build` succeeds on the target host before relying
-  on a maintenance window for it.
-- **No lockfile for the front end.** `package-lock.json` is not committed, so
-  the build falls back from `npm ci` to `npm install` and asset versions are not
-  reproducible between builds. Commit a lockfile to fix this.
+- **No CI.** The image has been built and run by hand — which is how the missing
+  `composer` binary in the runtime stage, the absent phpredis extension, and the
+  MySQL TLS verification in the backup scripts were all found and fixed. Nothing
+  re-checks that automatically, so a future change to the Dockerfile is only as
+  safe as the next manual `docker compose build`.
 - **Single host, no replication.** Appropriate for one pharmacy; the backup is
   the recovery plan. If the shop grows to a second branch, revisit.
+- **The front end targets Chrome 109 deliberately.** Bootstrap 5.3, not Tailwind:
+  Tailwind v4 requires Chrome 111+ and would render a broken interface on the
+  shop's Windows Server 2008 till, which is the one browser that must work
+  (`../DEPLOYMENT_WEB.md` §1). `vite.config.js` pins the build target to match.
+  Keep it that way when adding front-end dependencies.

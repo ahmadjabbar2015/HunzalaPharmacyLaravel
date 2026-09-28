@@ -1,24 +1,18 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
-import { bunny } from 'laravel-vite-plugin/fonts';
-import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js'],
+            input: ['resources/css/app.scss', 'resources/js/app.js'],
             refresh: true,
-            fonts: [
-                bunny('Instrument Sans', {
-                    weights: [400, 500, 600],
-                }),
-            ],
         }),
-        tailwindcss(),
     ],
-    server: {
-        watch: {
-            ignored: ['**/storage/framework/views/**'],
-        },
+
+    // Chrome 109 is the oldest browser that must work: it is the last version
+    // supporting the shop's Windows Server 2008 till (DEPLOYMENT_WEB.md §1).
+    // Without this, esbuild emits syntax that machine cannot parse.
+    build: {
+        target: ['es2022', 'chrome109', 'safari16'],
     },
 });

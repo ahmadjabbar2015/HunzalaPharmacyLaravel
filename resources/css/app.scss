@@ -1,0 +1,79 @@
+// Bootstrap 5, not Tailwind.
+//
+// The shop's till is a Windows Server 2008 machine, and Chrome 109 is the last
+// version that runs on it (DEPLOYMENT_WEB.md §1). Tailwind v4 requires Chrome
+// 111+ - it compiles to oklch() colours, @property and native cascade layers -
+// so it would render a broken interface on the one browser that MUST work.
+// Bootstrap 5.3 supports Chrome 60+.
+//
+// This is also what LARAVEL_PLAN.md §2 specifies, and why: the existing Flask
+// screens are Bootstrap, so they port across one-to-one.
+
+// Pharmacy palette. Deliberately high-contrast: the till sits under fluorescent
+// light and is read at arm's length, often by someone in a hurry.
+$primary:   #0d6e6e;   // teal - calmer than medical blue, still unmistakably clinical
+$secondary: #5a6570;
+$success:   #157347;
+$danger:    #b02a37;   // used for negative stock and a short drawer
+$warning:   #cc8500;   // expiry warnings
+$info:      #0f6674;
+
+// A slightly larger base than Bootstrap's 1rem: prices and quantities are read
+// at a glance across a counter.
+$font-size-base: 1.0625rem;
+$body-bg: #f6f8f8;
+
+@import 'bootstrap/scss/bootstrap';
+
+// ---------------------------------------------------------------------------
+// The few places the shop needs more than Bootstrap gives
+// ---------------------------------------------------------------------------
+
+// Tabular figures, so a column of prices lines up on the decimal point rather
+// than jittering as digits change width.
+.money,
+.qty {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+// A short drawer and negative stock must be impossible to skim past.
+.variance-short,
+.stock-negative {
+    color: $danger;
+    font-weight: 600;
+}
+
+.variance-over {
+    color: $warning;
+    font-weight: 600;
+}
+
+// The POS search field. Big, because it is the single most-used control in the
+// shop and is often typed into while looking at a customer rather than a screen.
+.pos-search {
+    font-size: 1.25rem;
+    padding: 0.75rem 1rem;
+}
+
+// The PIN pad. Touch targets sized for a finger, not a mouse pointer.
+.pin-pad button {
+    font-size: 1.5rem;
+    padding: 1rem;
+    min-width: 4.5rem;
+}
+
+// Printed output: a thermal receipt is 80mm wide and the browser must not try to
+// lay it out like a page.
+@media print {
+    .d-print-none-custom,
+    nav,
+    .btn {
+        display: none !important;
+    }
+
+    body {
+        background: #fff;
+        font-size: 12px;
+    }
+}

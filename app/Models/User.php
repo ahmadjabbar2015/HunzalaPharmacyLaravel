@@ -3,16 +3,20 @@
 namespace App\Models;
 
 use Illuminate\Auth\Authenticatable as AuthenticatableTrait;
+use Illuminate\Contracts\Auth\Access\Authorizable as AuthorizableContract;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Foundation\Auth\Access\Authorizable;
 
 /**
  * Staff, manager, or owner. The PIN is the identity at the point of sale:
  * it is unique among active users, so entering it says who completed a sale.
  */
-class User extends BaseModel implements Authenticatable
+class User extends BaseModel implements Authenticatable, AuthorizableContract
 {
-    use AuthenticatableTrait;
+    // Authorizable gives $user->can(), which the Gates in AuthServiceProvider
+    // are checked through - in a controller, a Blade @can, and a policy alike.
+    use AuthenticatableTrait, Authorizable;
 
     protected $table = 'users';
 

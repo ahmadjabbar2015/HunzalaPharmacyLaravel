@@ -55,9 +55,21 @@
                         </li>
                     @endcan
 
+                    @can('manage-customers')
+                        <li class="nav-item">
+                            <a class="nav-link @active('customers.*')" href="{{ route('customers.index') }}">Customers</a>
+                        </li>
+                    @endcan
+
                     <li class="nav-item">
                         <a class="nav-link @active('sales.*')" href="{{ route('sales.index') }}">Sales</a>
                     </li>
+
+                    @can('process-return')
+                        <li class="nav-item">
+                            <a class="nav-link @active('returns.*')" href="{{ route('returns.find') }}">Returns</a>
+                        </li>
+                    @endcan
 
                     <li class="nav-item">
                         <a class="nav-link @active('dashboard')" href="{{ route('dashboard') }}">Dashboard</a>

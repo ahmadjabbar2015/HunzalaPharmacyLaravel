@@ -15,6 +15,17 @@
         <a href="{{ route('sales.receipt', $sale) }}" class="btn btn-outline-secondary" target="_blank">
             Receipt
         </a>
+
+        @can('process-return')
+            {{--
+                The return starts from the sale, because a refund has to be at the
+                price the customer actually paid and only the sale knows that.
+            --}}
+            <a href="{{ route('returns.create', $sale) }}" class="btn btn-outline-warning">
+                Return something
+            </a>
+        @endcan
+
         <a href="{{ route('sales.index') }}" class="btn btn-link">Back to sales</a>
     </div>
 </div>

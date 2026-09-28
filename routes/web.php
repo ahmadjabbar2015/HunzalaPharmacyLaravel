@@ -1,10 +1,12 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DrawerController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ProfilePinController;
+use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\StaffController;
@@ -67,6 +69,40 @@ Route::middleware('auth')->group(function () {
     // Sales history. Read-only: a sale is never edited, only returned
     // against, so there is deliberately no edit route to find.
     // ---------------------------------------------------------------------
+    // ---------------------------------------------------------------------
+    // Customers and the families under them.
+    //
+    // No delete route: a customer's history is the reason the record exists,
+    // and removing the row would orphan every sale pointing at it. A household
+    // that has stopped coming is marked inactive.
+    // ---------------------------------------------------------------------
+    Route::middleware('can:manage-customers')->group(function () {
+        Route::get('customers', [CustomerController::class, 'index'])->name('customers.index');
+        Route::get('customers/new', [CustomerController::class, 'create'])->name('customers.create');
+        Route::post('customers', [CustomerController::class, 'store'])->name('customers.store');
+        Route::get('customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
+        Route::get('customers/{customer}/edit', [CustomerController::class, 'edit'])->name('customers.edit');
+        Route::put('customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
+
+        Route::post('customers/{customer}/members', [CustomerController::class, 'storeMember'])->name('customers.members.store');
+        Route::get('members/{member}', [CustomerController::class, 'showMember'])->name('customers.members.show');
+        Route::put('members/{member}', [CustomerController::class, 'updateMember'])->name('customers.members.update');
+    });
+
+    // ---------------------------------------------------------------------
+    // Returns. Staff-level: a customer at the counter with a faulty box
+    // should not have to wait for a manager. The refund is capped at what was
+    // sold and every return is attributed, which is the real control.
+    // ---------------------------------------------------------------------
+    Route::middleware('can:process-return')->group(function () {
+        Route::get('returns', [ReturnController::class, 'index'])->name('returns.index');
+        Route::get('returns/find', [ReturnController::class, 'find'])->name('returns.find');
+        Route::get('returns/new/{sale}', [ReturnController::class, 'create'])->name('returns.create');
+        Route::post('returns/new/{sale}', [ReturnController::class, 'store'])->name('returns.store');
+        Route::get('returns/{return}', [ReturnController::class, 'show'])->name('returns.show');
+        Route::get('returns/{return}/receipt', [ReturnController::class, 'receipt'])->name('returns.receipt');
+    });
+
     Route::get('sales', [SaleController::class, 'index'])->name('sales.index');
     Route::get('sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
     Route::get('sales/{sale}/receipt', [SaleController::class, 'receipt'])->name('sales.receipt');

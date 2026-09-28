@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DrawerController;
 use App\Http\Controllers\ProfilePinController;
+use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\StaffController;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +31,21 @@ Route::middleware('auth')->group(function () {
     Route::post('logout', [LoginController::class, 'destroy'])->name('logout');
 
     Route::get('/', DashboardController::class)->name('dashboard');
+
+    // ---------------------------------------------------------------------
+    // The till. A view that mounts the Livewire component, rather than the
+    // component routed directly: see resources/views/pos/index.blade.php for
+    // why routing it straight at this application's layout drops its markup.
+    // ---------------------------------------------------------------------
+    Route::view('sell', 'pos.index')->middleware('can:sell')->name('pos.index');
+
+    // ---------------------------------------------------------------------
+    // Sales history. Read-only: a sale is never edited, only returned
+    // against, so there is deliberately no edit route to find.
+    // ---------------------------------------------------------------------
+    Route::get('sales', [SaleController::class, 'index'])->name('sales.index');
+    Route::get('sales/{sale}', [SaleController::class, 'show'])->name('sales.show');
+    Route::get('sales/{sale}/receipt', [SaleController::class, 'receipt'])->name('sales.receipt');
 
     // ---------------------------------------------------------------------
     // The cash drawer

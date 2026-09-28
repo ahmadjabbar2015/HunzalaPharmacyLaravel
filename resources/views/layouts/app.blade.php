@@ -39,6 +39,20 @@
                     worth more than alphabetical order.
                 --}}
                 <ul class="navbar-nav me-auto">
+                    {{--
+                        Sell comes first and stays first. It is what the till is
+                        for, and muscle memory is worth more than tidy ordering.
+                    --}}
+                    @can('sell')
+                        <li class="nav-item">
+                            <a class="nav-link @active('pos.*')" href="{{ route('pos.index') }}">Sell</a>
+                        </li>
+                    @endcan
+
+                    <li class="nav-item">
+                        <a class="nav-link @active('sales.*')" href="{{ route('sales.index') }}">Sales</a>
+                    </li>
+
                     <li class="nav-item">
                         <a class="nav-link @active('dashboard')" href="{{ route('dashboard') }}">Dashboard</a>
                     </li>

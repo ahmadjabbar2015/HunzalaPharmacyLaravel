@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DrawerController;
+use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ProfilePinController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SettingsController;
@@ -38,6 +39,29 @@ Route::middleware('auth')->group(function () {
     // why routing it straight at this application's layout drops its markup.
     // ---------------------------------------------------------------------
     Route::view('sell', 'pos.index')->middleware('can:sell')->name('pos.index');
+
+    // ---------------------------------------------------------------------
+    // Inventory. Staff unpack the deliveries, so this is staff-level.
+    //
+    // Every quantity on these screens is derived from the ledger. There is no
+    // route that writes a quantity directly - receiving and adjusting both go
+    // through StockService, which is the only thing that appends to it.
+    // ---------------------------------------------------------------------
+    Route::middleware('can:manage-inventory')->group(function () {
+        Route::get('inventory', [InventoryController::class, 'index'])->name('inventory.index');
+        Route::get('inventory/alerts', [InventoryController::class, 'alerts'])->name('inventory.alerts');
+        Route::get('inventory/new', [InventoryController::class, 'create'])->name('inventory.create');
+        Route::post('inventory', [InventoryController::class, 'store'])->name('inventory.store');
+        Route::get('inventory/{item}', [InventoryController::class, 'show'])->name('inventory.show');
+        Route::get('inventory/{item}/edit', [InventoryController::class, 'edit'])->name('inventory.edit');
+        Route::put('inventory/{item}', [InventoryController::class, 'update'])->name('inventory.update');
+
+        Route::get('inventory/{item}/receive', [InventoryController::class, 'receiveForm'])->name('inventory.receive.form');
+        Route::post('inventory/{item}/receive', [InventoryController::class, 'receive'])->name('inventory.receive');
+
+        Route::get('inventory/{item}/adjust', [InventoryController::class, 'adjustForm'])->name('inventory.adjust.form');
+        Route::post('inventory/{item}/adjust', [InventoryController::class, 'adjust'])->name('inventory.adjust');
+    });
 
     // ---------------------------------------------------------------------
     // Sales history. Read-only: a sale is never edited, only returned

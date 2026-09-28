@@ -60,6 +60,9 @@
                     <h2 class="h6 text-secondary">Low stock</h2>
                     <p class="h4 mb-1">{{ $lowStockCount }}</p>
                     <p class="small text-secondary mb-2">at or below reorder level</p>
+                    @if ($lowStockCount > 0)
+                        <a href="{{ route('inventory.alerts') }}" class="btn btn-sm btn-outline-secondary">Review</a>
+                    @endif
                 </div>
             </div>
         </div>
@@ -77,6 +80,9 @@
                     <p class="small text-secondary mb-2">
                         batches within {{ $expiryAlertDays }} days
                     </p>
+                    @if ($expiringCount + $expiredCount > 0)
+                        <a href="{{ route('inventory.alerts') }}" class="btn btn-sm btn-outline-secondary">Review</a>
+                    @endif
                 </div>
             </div>
         </div>

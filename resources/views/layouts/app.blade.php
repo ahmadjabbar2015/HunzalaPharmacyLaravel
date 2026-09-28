@@ -49,6 +49,12 @@
                         </li>
                     @endcan
 
+                    @can('manage-inventory')
+                        <li class="nav-item">
+                            <a class="nav-link @active('inventory.*')" href="{{ route('inventory.index') }}">Inventory</a>
+                        </li>
+                    @endcan
+
                     <li class="nav-item">
                         <a class="nav-link @active('sales.*')" href="{{ route('sales.index') }}">Sales</a>
                     </li>

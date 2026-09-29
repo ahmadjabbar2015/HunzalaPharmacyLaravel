@@ -83,6 +83,12 @@
                         </li>
                     @endcan
 
+                    @can('view-reports')
+                        <li class="nav-item">
+                            <a class="nav-link @active('reports.*')" href="{{ route('reports.index') }}">Reports</a>
+                        </li>
+                    @endcan
+
                     <li class="nav-item">
                         <a class="nav-link @active('dashboard')" href="{{ route('dashboard') }}">Dashboard</a>
                     </li>

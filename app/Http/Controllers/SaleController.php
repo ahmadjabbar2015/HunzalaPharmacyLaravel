@@ -34,8 +34,8 @@ class SaleController extends Controller
                 $q->whereLike('invoice_number', "%{$term}%", caseSensitive: false)
                     ->orWhereHas('customer', fn ($c) => $c->whereLike('phone_number', "%{$term}%"));
             }))
-            ->when($filters['from'] ?? null, fn ($q, $from) => $q->where('sale_date', '>=', $from))
-            ->when($filters['to'] ?? null, fn ($q, $to) => $q->where('sale_date', '<=', $to))
+            ->when($filters['from'] ?? null, fn ($q, $from) => $q->whereDate('sale_date', '>=', $from))
+            ->when($filters['to'] ?? null, fn ($q, $to) => $q->whereDate('sale_date', '<=', $to))
             ->when($filters['payment_method'] ?? null, fn ($q, $m) => $q->where('payment_method', $m))
             ->latest('sale_time');
 

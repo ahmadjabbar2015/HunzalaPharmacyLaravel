@@ -32,7 +32,10 @@ class DashboardController extends Controller
         $drawer = $this->sessions->openSession();
         $today = BusinessDate::for()->toDateString();
 
-        $todaySales = Sale::query()->where('sale_date', $today);
+        // whereDate, not a bare equality: the stored value can carry a zero
+        // time component, which MySQL coerces away and SQLite does not. See the
+        // note in ReportService::dailySales().
+        $todaySales = Sale::query()->whereDate('sale_date', $today);
 
         $negativeStock = collect($this->stock->negativeStockItems());
 

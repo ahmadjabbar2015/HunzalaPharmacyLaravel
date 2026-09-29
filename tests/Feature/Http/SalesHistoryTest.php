@@ -18,6 +18,7 @@ use App\Services\ReturnLine;
 use App\Services\ReturnService;
 use App\Services\SaleService;
 use App\Services\StockService;
+use App\Support\BusinessDate;
 
 beforeEach(function () {
     $this->staff = User::factory()->create(['username' => 'ahmed', 'full_name' => 'Ahmed Ali']);
@@ -183,4 +184,23 @@ it('renders a receipt with no settings row', function () {
     // A fresh deployment that has not been through the settings screen must
     // still be able to print.
     $this->get(route('sales.receipt', $this->sale))->assertOk();
+});
+
+/*
+ * A date filter whose upper bound is today must include today.
+ *
+ * sale_date is a DATE column, but Eloquent's `date` cast writes it back through
+ * the model's datetime format, so the stored value can carry a zero time
+ * component. A string comparison then puts '2026-09-29 00:00:00' after
+ * '2026-09-29' and silently drops the most recent day - the one the user almost
+ * always wants. MySQL coerces the time away and SQLite does not, so this was
+ * invisible in production and total in the test suite. See the note in
+ * ReportService::dailySales().
+ */
+it('includes the last day of a date filter', function () {
+    $today = BusinessDate::today();
+
+    $this->get(route('sales.index', ['from' => $today, 'to' => $today]))
+        ->assertOk()
+        ->assertSee($this->sale->invoice_number);
 });

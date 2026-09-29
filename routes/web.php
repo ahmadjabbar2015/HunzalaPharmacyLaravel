@@ -7,6 +7,7 @@ use App\Http\Controllers\DrawerController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ProfilePinController;
 use App\Http\Controllers\PurchasingController;
+use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SettingsController;
@@ -172,6 +173,31 @@ Route::middleware('auth')->group(function () {
         Route::put('staff/{user}/pin', [StaffController::class, 'resetPin'])->name('staff.pin.reset');
         Route::delete('staff/{user}', [StaffController::class, 'deactivate'])->name('staff.deactivate');
         Route::post('staff/{user}/reactivate', [StaffController::class, 'reactivate'])->name('staff.reactivate');
+    });
+
+    // ---------------------------------------------------------------------
+    // Reports - manager and owner
+    //
+    // Read-only, so the whole group takes one gate. Each report has a screen
+    // and a `.csv` twin serving the same numbers; the CSV is its own route
+    // rather than a query parameter so it can be linked and bookmarked without
+    // a browser deciding to render it instead.
+    // ---------------------------------------------------------------------
+    Route::middleware('can:view-reports')->prefix('reports')->group(function () {
+        Route::get('/', [ReportsController::class, 'index'])->name('reports.index');
+
+        Route::get('daily-sales', [ReportsController::class, 'dailySales'])->name('reports.daily-sales');
+        Route::get('daily-sales.csv', [ReportsController::class, 'dailySalesCsv'])->name('reports.daily-sales.csv');
+
+        Route::get('sessions', [ReportsController::class, 'sessions'])->name('reports.sessions');
+        Route::get('sessions/{session}', [ReportsController::class, 'sessionSummary'])->name('reports.session');
+        Route::get('sessions/{session}/csv', [ReportsController::class, 'sessionSummaryCsv'])->name('reports.session.csv');
+
+        Route::get('inventory', [ReportsController::class, 'inventory'])->name('reports.inventory');
+        Route::get('inventory.csv', [ReportsController::class, 'inventoryCsv'])->name('reports.inventory.csv');
+
+        Route::get('profit-loss', [ReportsController::class, 'profitLoss'])->name('reports.profit-loss');
+        Route::get('profit-loss.csv', [ReportsController::class, 'profitLossCsv'])->name('reports.profit-loss.csv');
     });
 
     // ---------------------------------------------------------------------

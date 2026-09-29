@@ -136,6 +136,96 @@ it('receives packs into the ledger as pieces', function () {
         ->and(ItemBatch::where('item_uuid', $item->uuid)->value('purchase_price'))->toBe('20.00');
 });
 
+it('converts the quantity and the price units independently', function () {
+    /*
+     * The two units are separate questions and a supplier's invoice answers them
+     * separately - "5 boxes" priced "per tablet" is an ordinary way for a
+     * delivery note to read. Coupling them, or assuming one from the other, is
+     * how a batch ends up wrong by a factor of pack_size while looking entirely
+     * plausible on screen.
+     */
+    $item = Item::factory()->packOf(20)->create();
+    $this->actingAs(User::factory()->create());
+
+    // Packs of quantity, priced per piece.
+    $this->post(route('inventory.receive', $item), [
+        'batch_number' => 'B-MIXED-1',
+        'expiry_date' => now()->addYear()->toDateString(),
+        'quantity' => 5, 'quantity_unit' => 'packs',
+        'purchase_price' => '20.00', 'price_unit' => 'pieces',
+    ])->assertRedirect();
+
+    expect($this->stock->quantityFor($item->uuid))->toBe(100)
+        ->and(ItemBatch::where('batch_number', 'B-MIXED-1')->value('purchase_price'))->toBe('20.00');
+
+    // Pieces of quantity, priced per pack.
+    $this->post(route('inventory.receive', $item), [
+        'batch_number' => 'B-MIXED-2',
+        'expiry_date' => now()->addYear()->toDateString(),
+        'quantity' => 40, 'quantity_unit' => 'pieces',
+        'purchase_price' => '400.00', 'price_unit' => 'packs',
+    ])->assertRedirect();
+
+    expect($this->stock->quantityFor($item->uuid))->toBe(140)
+        ->and(ItemBatch::where('batch_number', 'B-MIXED-2')->value('purchase_price'))->toBe('20.00');
+});
+
+it('defaults both units to pieces when neither is given', function () {
+    // The safe direction to be wrong in. Defaulting to packs would multiply a
+    // plain number by the pack size behind the typist's back, and a stock figure
+    // twenty times too high is harder to notice than one twenty times too low.
+    $item = Item::factory()->packOf(20)->create();
+    $this->actingAs(User::factory()->create());
+
+    $this->post(route('inventory.receive', $item), [
+        'batch_number' => 'B-BARE',
+        'expiry_date' => now()->addYear()->toDateString(),
+        'quantity' => 5,
+        'purchase_price' => '20.00',
+    ])->assertRedirect();
+
+    expect($this->stock->quantityFor($item->uuid))->toBe(5);
+});
+
+it('refuses a unit it does not understand', function () {
+    $item = Item::factory()->packOf(20)->create();
+    $this->actingAs(User::factory()->create());
+
+    $this->post(route('inventory.receive', $item), [
+        'batch_number' => 'B-BAD',
+        'expiry_date' => now()->addYear()->toDateString(),
+        'quantity' => 5, 'quantity_unit' => 'boxes',
+        'purchase_price' => '20.00',
+    ])->assertSessionHasErrors('quantity_unit');
+
+    expect($this->stock->quantityFor($item->uuid))->toBe(0);
+});
+
+it('values a pack cost that does not divide evenly at the piece level', function () {
+    /*
+     * 100.00 for a pack of 3 is 33.33 a piece, so the batch values three pieces
+     * at 99.99 rather than the 100.00 the shop actually paid. The penny lands in
+     * valuation, not in cash - the supplier is still owed 100.00, which comes
+     * from the purchase total and not from this figure.
+     *
+     * Documented rather than corrected: carrying a per-piece cost is what lets
+     * COGS be computed in the same unit the sale is in, and a cost that only
+     * makes sense per pack would have to be divided somewhere anyway.
+     */
+    $item = Item::factory()->packOf(3)->create();
+    $this->actingAs(User::factory()->create());
+
+    $this->post(route('inventory.receive', $item), [
+        'batch_number' => 'B-ODD',
+        'expiry_date' => now()->addYear()->toDateString(),
+        'quantity' => 1, 'quantity_unit' => 'packs',
+        'purchase_price' => '100.00', 'price_unit' => 'packs',
+    ])->assertRedirect();
+
+    expect($this->stock->quantityFor($item->uuid))->toBe(3)
+        ->and(ItemBatch::where('batch_number', 'B-ODD')->value('purchase_price'))->toBe('33.33');
+});
+
 // ---------------------------------------------------------------------------
 // the discount ceiling
 // ---------------------------------------------------------------------------

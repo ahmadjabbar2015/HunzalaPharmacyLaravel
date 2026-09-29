@@ -71,6 +71,18 @@
                         </li>
                     @endcan
 
+                    @can('manage-purchasing')
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle @active('suppliers.*','purchasing.*')" href="#"
+                               role="button" data-bs-toggle="dropdown" aria-expanded="false">Purchasing</a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{{ route('suppliers.index') }}">Suppliers</a></li>
+                                <li><a class="dropdown-item" href="{{ route('purchasing.orders.index') }}">Purchase orders</a></li>
+                                <li><a class="dropdown-item" href="{{ route('purchasing.receipts.index') }}">Goods receipts</a></li>
+                            </ul>
+                        </li>
+                    @endcan
+
                     <li class="nav-item">
                         <a class="nav-link @active('dashboard')" href="{{ route('dashboard') }}">Dashboard</a>
                     </li>

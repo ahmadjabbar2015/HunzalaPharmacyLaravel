@@ -85,9 +85,9 @@
         </div>
 
         <p class="small text-secondary mt-3">
-            This is a direct receipt. Receiving against a purchase order &mdash; which also
-            reconciles what arrived against what was ordered &mdash; is on the purchasing
-            screens.
+            This is a direct receipt against one item. To receive a whole delivery, or to
+            reconcile what arrived against what was ordered, use
+            <a href="{{ route('purchasing.orders.index') }}">purchase orders</a>.
         </p>
     </div>
 </div>

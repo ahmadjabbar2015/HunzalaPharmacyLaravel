@@ -6,10 +6,12 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DrawerController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ProfilePinController;
+use App\Http\Controllers\PurchasingController;
 use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\StaffController;
+use App\Http\Controllers\SupplierController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -101,6 +103,36 @@ Route::middleware('auth')->group(function () {
         Route::post('returns/new/{sale}', [ReturnController::class, 'store'])->name('returns.store');
         Route::get('returns/{return}', [ReturnController::class, 'show'])->name('returns.show');
         Route::get('returns/{return}/receipt', [ReturnController::class, 'receipt'])->name('returns.receipt');
+    });
+
+    // ---------------------------------------------------------------------
+    // Suppliers and purchasing.
+    //
+    // An order is a plan and moves no stock; a receipt moves stock, always
+    // through ItemService so a goods receipt cannot bypass the duplicate-batch
+    // and expiry checks a manual entry is held to.
+    // ---------------------------------------------------------------------
+    Route::middleware('can:manage-purchasing')->group(function () {
+        Route::get('suppliers', [SupplierController::class, 'index'])->name('suppliers.index');
+        Route::get('suppliers/new', [SupplierController::class, 'create'])->name('suppliers.create');
+        Route::post('suppliers', [SupplierController::class, 'store'])->name('suppliers.store');
+        Route::get('suppliers/{supplier}', [SupplierController::class, 'show'])->name('suppliers.show');
+        Route::get('suppliers/{supplier}/edit', [SupplierController::class, 'edit'])->name('suppliers.edit');
+        Route::put('suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update');
+        Route::post('suppliers/{supplier}/payments', [SupplierController::class, 'storePayment'])->name('suppliers.payments.store');
+
+        Route::get('purchase-orders', [PurchasingController::class, 'orders'])->name('purchasing.orders.index');
+        Route::get('purchase-orders/new', [PurchasingController::class, 'createOrder'])->name('purchasing.orders.create');
+        Route::post('purchase-orders', [PurchasingController::class, 'storeOrder'])->name('purchasing.orders.store');
+        Route::get('purchase-orders/{order}', [PurchasingController::class, 'showOrder'])->name('purchasing.orders.show');
+        Route::post('purchase-orders/{order}/cancel', [PurchasingController::class, 'cancelOrder'])->name('purchasing.orders.cancel');
+        Route::get('purchase-orders/{order}/receive', [PurchasingController::class, 'receiveForm'])->name('purchasing.orders.receive.form');
+        Route::post('purchase-orders/{order}/receive', [PurchasingController::class, 'receive'])->name('purchasing.orders.receive');
+
+        Route::get('goods-receipts', [PurchasingController::class, 'receipts'])->name('purchasing.receipts.index');
+        Route::get('goods-receipts/new', [PurchasingController::class, 'createDirect'])->name('purchasing.receipts.create');
+        Route::post('goods-receipts', [PurchasingController::class, 'storeDirect'])->name('purchasing.receipts.store');
+        Route::get('goods-receipts/{receipt}', [PurchasingController::class, 'showReceipt'])->name('purchasing.receipts.show');
     });
 
     Route::get('sales', [SaleController::class, 'index'])->name('sales.index');

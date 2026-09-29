@@ -48,6 +48,35 @@ it('rounds a price that does not divide evenly, once', function () {
     expect($item->piecePrice())->toBe('8.33');
 });
 
+it('quotes the pack at what the till will actually charge', function () {
+    /*
+     * A pack of 7 at 300.00 is 42.86 a piece, and the till sells a pack as seven
+     * pieces - so a box rings up as 300.02, not 300.00.
+     *
+     * packPrice() reports that rather than sales_price. Reporting 300.00 meant
+     * the pack button's tooltip, the inventory list and the item page all quoted
+     * a figure the till would not charge. Two paisa is immaterial; the shop's own
+     * screens disagreeing about a price is not.
+     */
+    $item = Item::factory()->packOf(7)->create(['sales_price' => '300.00']);
+
+    expect($item->piecePrice())->toBe('42.86')
+        ->and($item->packPrice())->toBe('300.02');
+
+    // And the other direction, where the rounding goes down.
+    $short = Item::factory()->packOf(3)->create(['sales_price' => '100.00']);
+
+    expect($short->packPrice())->toBe('99.99');
+});
+
+it('quotes an evenly dividing pack at exactly the pack price', function () {
+    // The normal case, and every case a shop sets up deliberately: no surprise.
+    $item = Item::factory()->packOf(20)->create(['sales_price' => '200.00']);
+
+    expect($item->packPrice())->toBe('200.00')
+        ->and($item->piecePrice())->toBe('10.00');
+});
+
 it('lets a set piece price override the division', function () {
     // The real reason this field exists: 8.33 a tablet is sold at 10, and the
     // pack price follows the piece price rather than the other way round -

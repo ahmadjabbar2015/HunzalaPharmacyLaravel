@@ -72,19 +72,24 @@ class Item extends BaseModel
     }
 
     /**
-     * What a whole pack sells for.
+     * What a whole pack sells for: the piece price times the pack size, always.
      *
-     * When retail_price overrides the division, a pack is piece x pack_size
-     * rather than sales_price - otherwise selling ten singles and selling one
-     * box of ten would ring up different totals.
+     * Derived from piecePrice() in BOTH cases rather than returning sales_price
+     * when there is no override, because the till charges per piece and this
+     * figure is what the screens promise. Where the division is not exact the two
+     * differ: a pack of 7 at 300.00 is 42.86 a piece, and seven of those is
+     * 300.02. Returning 300.00 here meant the pack button's tooltip, the
+     * inventory list and the item page all quoted a price the till would not
+     * charge - two paisa, but a number the shop's own screens disagreed on.
+     *
+     * So sales_price stays what the shop paid attention to when pricing the box,
+     * and this is what a box actually rings up as. When the division IS exact -
+     * which is the normal case, and every case a shop sets up deliberately - they
+     * are the same figure.
      */
     public function packPrice(): string
     {
-        if ($this->retail_price !== null) {
-            return Money::multiply($this->retail_price, max(1, (int) $this->pack_size));
-        }
-
-        return Money::format($this->sales_price);
+        return Money::multiply($this->piecePrice(), max(1, (int) $this->pack_size));
     }
 
     /** True when this item is sold in packs at all. */

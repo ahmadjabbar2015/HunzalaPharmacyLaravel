@@ -112,6 +112,67 @@ it('describes a piece count as packs plus loose', function () {
         ->and($item->describePieces(30))->toBe('30 tablet (3 packs)');
 });
 
+it('treats a blank pack size as one piece to a pack', function () {
+    // "Nothing entered" is an ordinary answer at a counter, and it means the
+    // item is sold one at a time - not that the form is incomplete.
+    $this->actingAs(User::factory()->create());
+
+    $this->post(route('inventory.store'), [
+        'item_code' => 'BLANK-1',
+        'item_name' => 'Sold singly',
+        'purchase_price' => '40.00',
+        'sales_price' => '50.00',
+        'pack_size' => '',
+    ])->assertRedirect();
+
+    $item = Item::where('item_code', 'BLANK-1')->first();
+
+    expect($item->pack_size)->toBe(1)
+        // And the piece price is then the price as typed: pack price / 1.
+        ->and($item->piecePrice())->toBe('50.00');
+});
+
+it('treats a blank pack size on an edit as one, not an error', function () {
+    // Clearing the field is how someone says "this is not sold in packs after
+    // all". Before this it failed validation, which reads as a broken form.
+    $item = Item::factory()->packOf(20)->create(['sales_price' => '200.00']);
+    $this->actingAs(User::factory()->create());
+
+    $this->put(route('inventory.update', $item), [
+        'item_name' => $item->item_name,
+        'purchase_price' => $item->purchase_price,
+        'sales_price' => '200.00',
+        'pack_size' => '',
+    ])->assertRedirect(route('inventory.show', $item));
+
+    expect($item->fresh()->pack_size)->toBe(1)
+        ->and($item->fresh()->piecePrice())->toBe('200.00');
+});
+
+it('leaves the pack size alone when the field is not submitted at all', function () {
+    // Absent is not blank. A request that never mentions pack_size is not
+    // saying anything about it, and flattening a pack of 20 to 1 on that basis
+    // would be a silent repricing of the shelf.
+    $item = Item::factory()->packOf(20)->create(['sales_price' => '200.00']);
+    $this->actingAs(User::factory()->create());
+
+    $this->put(route('inventory.update', $item), [
+        'item_name' => 'Renamed',
+        'purchase_price' => $item->purchase_price,
+        'sales_price' => '200.00',
+    ])->assertRedirect();
+
+    expect($item->fresh()->pack_size)->toBe(20)
+        ->and($item->fresh()->piecePrice())->toBe('10.00');
+});
+
+it('prices a piece as the pack price divided by the pieces in the pack', function () {
+    // The rule, stated plainly, at both ends of the range.
+    expect(Item::factory()->packOf(1)->create(['sales_price' => '75.00'])->piecePrice())->toBe('75.00')
+        ->and(Item::factory()->packOf(4)->create(['sales_price' => '75.00'])->piecePrice())->toBe('18.75')
+        ->and(Item::factory()->packOf(100)->create(['sales_price' => '75.00'])->piecePrice())->toBe('0.75');
+});
+
 // ---------------------------------------------------------------------------
 // receiving
 // ---------------------------------------------------------------------------

@@ -316,7 +316,7 @@ class InventoryController extends Controller
      */
     private function validateItem(Request $request, ?Item $item = null): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'item_code' => [
                 $item === null ? 'required' : 'nullable',
                 'string', 'max:50',
@@ -343,5 +343,20 @@ class InventoryController extends Controller
             'unit_of_measure' => ['nullable', 'string', 'max:30'],
             'location' => ['nullable', 'string', 'max:60'],
         ]);
+
+        /*
+         * A blank pack size means one piece to a pack - an item sold whole,
+         * which is what every item in the catalogue was before packs existed.
+         *
+         * Only when the field was actually submitted and left empty. A request
+         * that does not mention pack_size at all leaves it alone, because
+         * forcing 1 there would silently flatten a pack of 20 the moment anyone
+         * saved a form that happened not to carry the field.
+         */
+        if (array_key_exists('pack_size', $validated) && blank($validated['pack_size'])) {
+            $validated['pack_size'] = 1;
+        }
+
+        return $validated;
     }
 }

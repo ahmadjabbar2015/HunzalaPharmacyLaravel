@@ -57,9 +57,11 @@
         <input type="number" min="1" step="1" inputmode="numeric"
                class="form-control @error('pack_size') is-invalid @enderror"
                id="pack_size" name="pack_size"
-               value="{{ old('pack_size', $editing ? $item->pack_size : 1) }}" required>
+               value="{{ old('pack_size', $editing ? $item->pack_size : '') }}"
+               placeholder="1">
         @error('pack_size')<div class="invalid-feedback">{{ $message }}</div>@enderror
-        <div class="form-text">Tablets in a box, ml in a bottle. 1 if it is only sold whole.</div>
+        {{-- Left blank it is 1: an item sold one at a time. --}}
+        <div class="form-text">Tablets in a box, ml in a bottle. Blank means 1.</div>
     </div>
 
     <div class="col-6 col-md-3">

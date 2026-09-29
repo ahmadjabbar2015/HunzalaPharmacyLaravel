@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\SaleException;
+use App\Models\Item;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Support\BusinessDate;
@@ -76,6 +77,8 @@ class SaleService
         $subtotal = Money::sum(array_map(fn (CartLine $line) => $line->amount(), $lines));
         $discount = $this->resolveDiscount($subtotal, $discountType, $discountAmount);
         $net = Money::sub($subtotal, $discount);
+
+        $this->assertWithinItemDiscountLimits($lines, $discount, $discountPinVerified);
 
         if (Money::isNegative($net)) {
             // Not clamped to zero: an over-subtotal discount is almost always a
@@ -153,6 +156,81 @@ class SaleService
 
             return $sale;
         });
+    }
+
+    /**
+     * The most this cart may be discounted, in rupees.
+     *
+     * Each item carries its own ceiling as a percentage. The discount here is
+     * taken off the whole sale rather than off a line, so the cart's ceiling is
+     * the sum of each line's own: a cart of one item capped at 10% and one
+     * uncapped item may give away all of the second and a tenth of the first.
+     * Spreading a sale-level discount any other way would either punish the
+     * uncapped item or let a capped one be discounted past its limit by hiding
+     * behind the rest of the basket.
+     *
+     * Returns null when nothing in the cart is capped, which is the normal case
+     * and means "no limit" rather than "a limit of everything".
+     *
+     * @param  list<CartLine>  $lines
+     */
+    public function discountCeiling(array $lines): ?string
+    {
+        $itemUuids = array_values(array_unique(array_map(fn (CartLine $line) => $line->itemUuid, $lines)));
+
+        /** @var array<string, string|null> $limits */
+        $limits = Item::query()
+            ->whereIn('uuid', $itemUuids)
+            ->pluck('max_discount_percent', 'uuid')
+            ->all();
+
+        // Nothing in the basket is capped: the sale is governed by the PIN
+        // threshold alone, as it was before item limits existed.
+        if (array_filter($limits, fn ($percent) => $percent !== null) === []) {
+            return null;
+        }
+
+        $ceiling = Money::ZERO;
+
+        foreach ($lines as $line) {
+            $percent = $limits[$line->itemUuid] ?? null;
+
+            $ceiling = Money::add($ceiling, $percent === null
+                // Uncapped: the whole line may be given away.
+                ? $line->amount()
+                : Money::percentOf($line->amount(), $percent));
+        }
+
+        return $ceiling;
+    }
+
+    /**
+     * Refuse a discount that exceeds what the items in the cart allow.
+     *
+     * A verified manager PIN overrides it. The limit is a brake on what a
+     * counter can do unsupervised, not a rule the owner cannot break - and the
+     * override is already audited, so a deliberate one leaves a trail while an
+     * accidental one is stopped.
+     *
+     * @param  list<CartLine>  $lines
+     *
+     * @throws SaleException when the discount is over the ceiling and unauthorised
+     */
+    private function assertWithinItemDiscountLimits(array $lines, string $discount, bool $discountPinVerified): void
+    {
+        if (Money::isZero($discount) || $discountPinVerified) {
+            return;
+        }
+
+        $ceiling = $this->discountCeiling($lines);
+
+        if ($ceiling === null || ! Money::greaterThan($discount, $ceiling)) {
+            return;
+        }
+
+        throw new SaleException(
+            "discount of {$discount} exceeds the {$ceiling} these items allow; a manager PIN is needed"
+        );
     }
 
     /**

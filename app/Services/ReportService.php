@@ -312,8 +312,13 @@ class ReportService
                         && $batch->expiry_date->lessThan($today),
                 ];
             }
-
-            $stockValue = Money::multiply($item->purchase_price, $qty);
+            /*
+             * Valued in PIECES. $qty is a piece count and purchase_price is the
+             * cost of a whole pack, so multiplying the two directly would value
+             * the shelf at pack_size times what it is worth - the kind of error
+             * that is invisible until someone reconciles against an accountant.
+             */
+            $stockValue = Money::multiply($item->pieceCost(), $qty);
 
             $report['items'][] = [
                 'uuid' => $item->uuid,
@@ -321,11 +326,15 @@ class ReportService
                 'item_name' => $item->item_name,
                 'manufacturer' => $item->manufacturer ?? '',
                 'unit' => $item->unit_of_measure ?? '',
+                'pack_size' => (int) $item->pack_size,
                 'derived_qty' => $qty,
                 'reorder_level' => $item->reorder_level,
                 'is_low_stock' => $isLow,
-                'purchase_price' => Money::format($item->purchase_price),
-                'sales_price' => Money::format($item->sales_price),
+                // Per piece, matching derived_qty. The pack figures are on the
+                // item screen; a valuation report that mixed units would be read
+                // wrong by whoever it is for.
+                'purchase_price' => $item->pieceCost(),
+                'sales_price' => $item->piecePrice(),
                 'stock_value' => $stockValue,
                 'batches' => $batchRows,
             ];

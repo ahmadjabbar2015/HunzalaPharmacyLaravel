@@ -59,10 +59,10 @@
                 <thead>
                     <tr>
                         <th>Item</th>
-                        <th style="width: 7rem;" class="text-end">Quantity</th>
+                        <th style="width: 7rem;" class="text-end">Quantity <span class="text-secondary fw-normal">(pieces)</span></th>
                         <th style="width: 9rem;">Batch</th>
                         <th style="width: 10rem;">Expires</th>
-                        <th style="width: 8rem;" class="text-end">Unit cost</th>
+                        <th style="width: 8rem;" class="text-end">Cost per piece</th>
                     </tr>
                 </thead>
                 <tbody>

@@ -49,27 +49,48 @@
                     @forelse ($this->results as $item)
                         @php($available = $this->stockLevels[$item->uuid] ?? 0)
 
-                        <button type="button"
-                                class="list-group-item list-group-item-action d-flex justify-content-between align-items-center text-start"
-                                wire:click="addItem('{{ $item->uuid }}')"
-                                wire:key="result-{{ $item->uuid }}">
-                            <span>
-                                <span class="fw-semibold d-block">{{ $item->item_name }}</span>
-                                <span class="small text-secondary">
-                                    {{ $item->item_code }}
-                                    @if ($item->location) &middot; {{ $item->location }} @endif
-                                    @if ($item->is_narcotic)
-                                        &middot; <span class="text-danger">controlled</span>
-                                    @endif
+                        {{--
+                            A row, not a single button: the pack shortcut is its
+                            own control and a button inside a button is not valid
+                            markup - browsers drop one of the two, and which one
+                            they drop is not something to rely on at a till.
+                        --}}
+                        <div class="list-group-item d-flex justify-content-between align-items-center gap-2"
+                             wire:key="result-{{ $item->uuid }}">
+                            <button type="button"
+                                    class="btn btn-link text-decoration-none text-body text-start p-0 flex-grow-1 d-flex justify-content-between align-items-center"
+                                    wire:click="addItem('{{ $item->uuid }}')">
+                                <span>
+                                    <span class="fw-semibold d-block">{{ $item->item_name }}</span>
+                                    <span class="small text-secondary">
+                                        {{ $item->item_code }}
+                                        @if ($item->location) &middot; {{ $item->location }} @endif
+                                        @if ($item->is_narcotic)
+                                            &middot; <span class="text-danger">controlled</span>
+                                        @endif
+                                    </span>
                                 </span>
-                            </span>
-                            <span class="text-end">
-                                <span class="money d-block">{{ $item->sales_price }}</span>
-                                <span class="small {{ $available <= 0 ? 'stock-negative' : 'text-secondary' }}">
-                                    {{ $available }} in stock
+                                <span class="text-end">
+                                    {{-- Per piece: the quantity the till counts in. --}}
+                                    <span class="money d-block">{{ $item->piecePrice() }}</span>
+                                    <span class="small d-block {{ $available <= 0 ? 'stock-negative' : 'text-secondary' }}">
+                                        {{ $available }} in stock
+                                        @if ($item->sells_in_packs)
+                                            <span class="d-block">{{ intdiv(max(0, $available), $item->pack_size) }} packs</span>
+                                        @endif
+                                    </span>
                                 </span>
-                            </span>
-                        </button>
+                            </button>
+
+                            @if ($item->sells_in_packs)
+                                {{-- A whole box in one keystroke, at the same per-piece rate. --}}
+                                <button type="button" class="btn btn-sm btn-outline-secondary flex-shrink-0"
+                                        wire:click="addPack('{{ $item->uuid }}')"
+                                        title="{{ $item->pack_size }} {{ $item->unit_of_measure ?: 'pieces' }} at {{ $item->packPrice() }}">
+                                    + pack<span class="d-block small">of {{ $item->pack_size }}</span>
+                                </button>
+                            @endif
+                        </div>
                     @empty
                         <div class="list-group-item text-secondary">
                             Nothing matches &ldquo;{{ $this->search }}&rdquo;.
@@ -183,6 +204,20 @@
                                         <button type="button" class="btn btn-outline-secondary"
                                                 wire:click="incrementLine('{{ $lineId }}')">+</button>
                                     </div>
+                                    @if (($line['pack_size'] ?? 1) > 1)
+                                        {{--
+                                            The quantity is always pieces. This
+                                            line says what that is in packs, so
+                                            "30" on a pack of 10 is visibly three
+                                            boxes and not thirty of them.
+                                        --}}
+                                        <span class="d-block small text-secondary mt-1">
+                                            {{ intdiv(max(0, (int) $line['quantity']), $line['pack_size']) }} packs
+                                            @if (max(0, (int) $line['quantity']) % $line['pack_size'])
+                                                + {{ max(0, (int) $line['quantity']) % $line['pack_size'] }}
+                                            @endif
+                                        </span>
+                                    @endif
                                 </td>
                                 <td class="text-end">
                                     {{-- Editable: a price override is a real thing at a counter. --}}
@@ -301,6 +336,21 @@
                                         fetch a manager for every sale.
                                     --}}
                                     <div class="mb-3">
+                                        @if ($this->overItemDiscountLimit)
+                                            {{--
+                                                Said in rupees rather than as a
+                                                percentage: the cart's ceiling is
+                                                the sum of each item's own limit,
+                                                and no single percentage
+                                                describes that honestly.
+                                            --}}
+                                            <div class="alert alert-warning small py-2">
+                                                These items allow at most
+                                                <span class="money">{{ $this->itemDiscountCeiling }}</span>
+                                                off. A manager can approve more.
+                                            </div>
+                                        @endif
+
                                         <label for="authorisingPin" class="form-label small fw-semibold">
                                             Manager's PIN to authorise this discount
                                         </label>

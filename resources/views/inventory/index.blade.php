@@ -68,9 +68,9 @@
                     <th>Item</th>
                     <th>Category</th>
                     <th>Where</th>
-                    <th class="text-end">In stock</th>
+                    <th class="text-end">In stock (pieces)</th>
                     <th class="text-end">Reorder at</th>
-                    <th class="text-end">Sells for</th>
+                    <th class="text-end">Per piece</th>
                     <th></th>
                 </tr>
             </thead>
@@ -99,11 +99,25 @@
                             @if ($item->reorder_level > 0 && $row['qty'] <= $item->reorder_level && $row['qty'] >= 0)
                                 <span class="badge text-bg-warning">low</span>
                             @endif
+                            @if ($item->sells_in_packs && $row['qty'] > 0)
+                                <span class="small text-secondary d-block">
+                                    {{ intdiv($row['qty'], $item->pack_size) }} packs
+                                    @if ($row['qty'] % $item->pack_size) + {{ $row['qty'] % $item->pack_size }} @endif
+                                </span>
+                            @endif
                         </td>
                         <td class="qty small text-secondary">
                             {{ $item->reorder_level > 0 ? $item->reorder_level : '—' }}
                         </td>
-                        <td class="money">{{ $item->sales_price }}</td>
+                        <td class="money">
+                            {{ $item->piecePrice() }}
+                            @if ($item->sells_in_packs)
+                                {{-- The pack price too: it is what a supplier quote is in. --}}
+                                <span class="small text-secondary d-block">
+                                    {{ $item->packPrice() }} / {{ $item->pack_size }}
+                                </span>
+                            @endif
+                        </td>
                         <td class="text-end">
                             <a href="{{ route('inventory.receive.form', $item) }}"
                                class="btn btn-sm btn-outline-success">Receive</a>

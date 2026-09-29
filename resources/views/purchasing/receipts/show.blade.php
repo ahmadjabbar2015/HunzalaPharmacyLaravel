@@ -34,8 +34,8 @@
                     <th>Item</th>
                     <th>Batch</th>
                     <th>Expires</th>
-                    <th class="text-end">Quantity</th>
-                    <th class="text-end">Unit cost</th>
+                    <th class="text-end">Quantity <span class="text-secondary fw-normal">(pieces)</span></th>
+                    <th class="text-end">Cost per piece</th>
                     <th class="text-end">Amount</th>
                 </tr>
             </thead>

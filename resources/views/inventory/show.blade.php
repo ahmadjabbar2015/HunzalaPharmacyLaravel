@@ -35,6 +35,10 @@
             <div class="card-body">
                 <h2 class="h6 text-secondary">In stock</h2>
                 <p class="display-6 mb-1 {{ $derivedQty < 0 ? 'stock-negative' : '' }}">{{ $derivedQty }}</p>
+                @if ($item->sells_in_packs)
+                    {{-- Pieces is the number; packs is the shape of it on a shelf. --}}
+                    <p class="small mb-1">{{ $item->describePieces(max(0, $derivedQty)) }}</p>
+                @endif
                 <p class="small text-secondary mb-0">
                     {{--
                         Said explicitly, because it is the single most important
@@ -60,17 +64,38 @@
         <div class="card">
             <div class="card-body">
                 <dl class="row small mb-0">
-                    <dt class="col-6">Sells for</dt>
-                    <dd class="col-6 money">{{ $item->sales_price }}</dd>
+                    {{--
+                        Per piece first: it is what the till charges and what a
+                        customer asking "how much for one?" is told. The pack
+                        price is the second line, not the headline.
+                    --}}
+                    <dt class="col-6">Per {{ $item->unit_of_measure ?: 'piece' }}</dt>
+                    <dd class="col-6 money">
+                        {{ $item->piecePrice() }}
+                        @if ($item->retail_price !== null && $item->sells_in_packs)
+                            <span class="badge text-bg-light">set</span>
+                        @endif
+                    </dd>
 
-                    <dt class="col-6">Last cost</dt>
+                    <dt class="col-6">Pack of {{ $item->pack_size }}</dt>
+                    <dd class="col-6 money">{{ $item->packPrice() }}</dd>
+
+                    <dt class="col-6">Cost per pack</dt>
                     <dd class="col-6 money">{{ $item->purchase_price }}</dd>
+
+                    <dt class="col-6">Max discount</dt>
+                    <dd class="col-6">
+                        @if ($item->max_discount_percent === null)
+                            <span class="text-secondary">no limit</span>
+                        @elseif ((float) $item->max_discount_percent === 0.0)
+                            <span class="text-danger">never discount</span>
+                        @else
+                            {{ rtrim(rtrim($item->max_discount_percent, '0'), '.') }}%
+                        @endif
+                    </dd>
 
                     <dt class="col-6">Category</dt>
                     <dd class="col-6">{{ $item->category ?? '—' }}</dd>
-
-                    <dt class="col-6">Unit</dt>
-                    <dd class="col-6">{{ $item->unit_of_measure ?? '—' }}</dd>
 
                     <dt class="col-6">Shelf</dt>
                     <dd class="col-6">{{ $item->location ?? '—' }}</dd>

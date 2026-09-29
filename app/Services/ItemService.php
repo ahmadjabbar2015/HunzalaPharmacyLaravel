@@ -37,6 +37,7 @@ class ItemService
         'item_name', 'manufacturer', 'category', 'description',
         'sales_price', 'purchase_price', 'unit_of_measure', 'location',
         'reorder_level', 'is_narcotic', 'is_active', 'barcode',
+        'pack_size', 'retail_price', 'max_discount_percent',
     ];
 
     public function __construct(private readonly StockService $stock) {}
@@ -65,6 +66,9 @@ class ItemService
         bool $isNarcotic = false,
         ?string $barcode = null,
         ?string $description = null,
+        int $packSize = 1,
+        string|float|int|null $retailPrice = null,
+        string|float|int|null $maxDiscountPercent = null,
     ): Item {
         $itemCode = trim($itemCode);
         $itemName = trim($itemName);
@@ -88,6 +92,16 @@ class ItemService
             throw new ItemException("barcode '{$barcode}' is already assigned to another item");
         }
 
+        if ($packSize < 1) {
+            // A pack of zero pieces makes every per-piece price a division by
+            // zero and every receipt of "n packs" add nothing to the shelf.
+            throw new ItemException('pieces in a pack must be at least 1');
+        }
+
+        if ($maxDiscountPercent !== null && ((float) $maxDiscountPercent < 0 || (float) $maxDiscountPercent > 100)) {
+            throw new ItemException('max discount must be between 0 and 100 per cent');
+        }
+
         $item = Item::create([
             'item_code' => $itemCode,
             'item_name' => $itemName,
@@ -97,6 +111,9 @@ class ItemService
             'description' => $description,
             'sales_price' => $salesPrice,
             'purchase_price' => $purchasePrice,
+            'pack_size' => $packSize,
+            'retail_price' => $retailPrice,
+            'max_discount_percent' => $maxDiscountPercent,
             'unit_of_measure' => $unitOfMeasure,
             'location' => $location,
             'reorder_level' => $reorderLevel,
@@ -129,6 +146,18 @@ class ItemService
 
         if (array_key_exists('item_name', $changes) && trim((string) $changes['item_name']) === '') {
             throw new ItemException('name cannot be blank');
+        }
+
+        if (array_key_exists('pack_size', $changes) && (int) $changes['pack_size'] < 1) {
+            throw new ItemException('pieces in a pack must be at least 1');
+        }
+
+        if (array_key_exists('max_discount_percent', $changes) && $changes['max_discount_percent'] !== null) {
+            $percent = (float) $changes['max_discount_percent'];
+
+            if ($percent < 0 || $percent > 100) {
+                throw new ItemException('max discount must be between 0 and 100 per cent');
+            }
         }
 
         if (array_key_exists('barcode', $changes)) {

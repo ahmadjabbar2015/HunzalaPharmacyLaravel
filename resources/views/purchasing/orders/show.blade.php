@@ -52,7 +52,7 @@
                             <th class="text-end">Ordered</th>
                             <th class="text-end">Received</th>
                             <th class="text-end">Still due</th>
-                            <th class="text-end">Unit cost</th>
+                            <th class="text-end">Cost per piece</th>
                         </tr>
                     </thead>
                     <tbody>

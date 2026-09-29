@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Models\StockTransaction;
 use App\Services\ItemService;
 use App\Services\StockService;
+use App\Support\Money;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -135,6 +136,9 @@ class InventoryController extends Controller
                 isNarcotic: $request->boolean('is_narcotic'),
                 barcode: $validated['barcode'] ?? null,
                 description: $validated['description'] ?? null,
+                packSize: (int) ($validated['pack_size'] ?? 1),
+                retailPrice: $validated['retail_price'] ?? null,
+                maxDiscountPercent: $validated['max_discount_percent'] ?? null,
             );
         } catch (ItemException $e) {
             return back()->withInput()->withErrors(['item_code' => $e->getMessage()]);
@@ -187,16 +191,42 @@ class InventoryController extends Controller
             'expiry_date' => ['required', 'date'],
             'mfg_date' => ['nullable', 'date', 'before_or_equal:expiry_date'],
             'quantity' => ['required', 'integer', 'min:1'],
+            // Whether the number above is packs or loose pieces. The invoice
+            // counts packs and the shelf counts pieces, and entering one as the
+            // other is the error these fields exist to prevent.
+            //
+            // Optional, defaulting to pieces: pieces is what the ledger holds,
+            // so a request without the field records exactly what it says. The
+            // safe direction to be wrong in - defaulting to packs would multiply
+            // a plain number by the pack size behind the typist's back.
+            'quantity_unit' => ['nullable', 'in:packs,pieces'],
             'purchase_price' => ['required', 'numeric', 'min:0'],
+            'price_unit' => ['nullable', 'in:packs,pieces'],
         ]);
+
+        $packSize = max(1, (int) $item->pack_size);
+
+        /*
+         * Everything below this line is in PIECES. The conversion happens once,
+         * here, because the ledger has exactly one unit and a batch received in
+         * packs but recorded in pieces - or the reverse - is a stock figure that
+         * is wrong by a factor of pack_size and looks perfectly plausible.
+         */
+        $pieces = ($validated['quantity_unit'] ?? 'pieces') === 'packs'
+            ? $validated['quantity'] * $packSize
+            : (int) $validated['quantity'];
+
+        $piecePrice = ($validated['price_unit'] ?? 'pieces') === 'packs'
+            ? Money::divide($validated['purchase_price'], $packSize)
+            : Money::format($validated['purchase_price']);
 
         try {
             $this->items->receiveNewBatch(
                 itemUuid: $item->uuid,
                 batchNumber: $validated['batch_number'],
                 expiryDate: $validated['expiry_date'],
-                quantity: $validated['quantity'],
-                purchasePrice: $validated['purchase_price'],
+                quantity: $pieces,
+                purchasePrice: $piecePrice,
                 deviceId: config('pharmacy.device_id'),
                 mfgDate: $validated['mfg_date'] ?? null,
                 performedByUserUuid: $request->user()->uuid,
@@ -206,7 +236,7 @@ class InventoryController extends Controller
         }
 
         return redirect()->route('inventory.show', $item)
-            ->with('status', "{$validated['quantity']} received into batch {$validated['batch_number']}.");
+            ->with('status', "{$item->describePieces($pieces)} received into batch {$validated['batch_number']}.");
     }
 
     // -----------------------------------------------------------------------
@@ -298,6 +328,17 @@ class InventoryController extends Controller
             'description' => ['nullable', 'string', 'max:2000'],
             'purchase_price' => ['required', 'numeric', 'min:0', 'max:99999999'],
             'sales_price' => ['required', 'numeric', 'min:0', 'max:99999999'],
+            // Pieces in a pack. Optional, defaulting to 1: a request without it
+            // is describing an item sold whole, which is what every item in the
+            // catalogue was before packs existed. At least 1 - a pack of nothing
+            // makes every per-piece price a division by zero.
+            'pack_size' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            // Blank means "just divide the pack price", which is why this is
+            // nullable rather than defaulted.
+            'retail_price' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
+            // Blank means no ceiling. 0 is a real, different answer: never
+            // discount this one.
+            'max_discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'reorder_level' => ['nullable', 'integer', 'min:0', 'max:1000000'],
             'unit_of_measure' => ['nullable', 'string', 'max:30'],
             'location' => ['nullable', 'string', 'max:60'],

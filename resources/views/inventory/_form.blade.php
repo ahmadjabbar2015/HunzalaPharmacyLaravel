@@ -53,16 +53,34 @@
     </div>
 
     <div class="col-6 col-md-3">
-        <label for="purchase_price" class="form-label">Cost</label>
+        <label for="pack_size" class="form-label">Pieces in packing</label>
+        <input type="number" min="1" step="1" inputmode="numeric"
+               class="form-control @error('pack_size') is-invalid @enderror"
+               id="pack_size" name="pack_size"
+               value="{{ old('pack_size', $editing ? $item->pack_size : 1) }}" required>
+        @error('pack_size')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        <div class="form-text">Tablets in a box, ml in a bottle. 1 if it is only sold whole.</div>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <label for="unit_of_measure" class="form-label">Piece is a</label>
+        <input type="text" class="form-control" id="unit_of_measure" name="unit_of_measure"
+               value="{{ old('unit_of_measure', $editing ? $item->unit_of_measure : '') }}"
+               maxlength="30" placeholder="tablet, ml, sachet">
+    </div>
+
+    <div class="col-6 col-md-3">
+        <label for="purchase_price" class="form-label">Cost per pack</label>
         <input type="number" step="0.01" min="0" inputmode="decimal"
                class="form-control money @error('purchase_price') is-invalid @enderror"
                id="purchase_price" name="purchase_price"
                value="{{ old('purchase_price', $editing ? $item->purchase_price : '0.00') }}" required>
         @error('purchase_price')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        <div class="form-text">What the supplier invoices for a whole pack.</div>
     </div>
 
     <div class="col-6 col-md-3">
-        <label for="sales_price" class="form-label">Sells for</label>
+        <label for="sales_price" class="form-label">Pack sells for</label>
         <input type="number" step="0.01" min="0" inputmode="decimal"
                class="form-control money @error('sales_price') is-invalid @enderror"
                id="sales_price" name="sales_price"
@@ -71,18 +89,52 @@
     </div>
 
     <div class="col-6 col-md-3">
+        {{--
+            The price the till actually charges. Left blank it is the pack price
+            divided by the pack size, which is right until it is 8.33 - so it is
+            overridable, and shops override it constantly.
+        --}}
+        <label for="retail_price" class="form-label">
+            Price per piece <span class="text-secondary">(optional)</span>
+        </label>
+        <input type="number" step="0.01" min="0" inputmode="decimal"
+               class="form-control money @error('retail_price') is-invalid @enderror"
+               id="retail_price" name="retail_price"
+               value="{{ old('retail_price', $editing ? $item->retail_price : '') }}"
+               placeholder="auto">
+        @error('retail_price')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        <div class="form-text" id="piece-price-hint">
+            @if ($editing)
+                Now charging {{ $item->piecePrice() }} a {{ $item->unit_of_measure ?: 'piece' }}.
+            @else
+                Blank splits the pack price evenly.
+            @endif
+        </div>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <label for="max_discount_percent" class="form-label">
+            Max discount <span class="text-secondary">(optional)</span>
+        </label>
+        <div class="input-group">
+            <input type="number" step="0.01" min="0" max="100" inputmode="decimal"
+                   class="form-control @error('max_discount_percent') is-invalid @enderror"
+                   id="max_discount_percent" name="max_discount_percent"
+                   value="{{ old('max_discount_percent', $editing ? $item->max_discount_percent : '') }}"
+                   placeholder="none">
+            <span class="input-group-text">%</span>
+            @error('max_discount_percent')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        </div>
+        {{-- Blank and 0 are different answers, and the difference matters. --}}
+        <div class="form-text">Blank means no limit. 0 means never discount this one.</div>
+    </div>
+
+    <div class="col-6 col-md-3">
         <label for="reorder_level" class="form-label">Reorder at</label>
         <input type="number" min="0" class="form-control"
                id="reorder_level" name="reorder_level"
                value="{{ old('reorder_level', $editing ? $item->reorder_level : 0) }}">
-        <div class="form-text">0 means not tracked.</div>
-    </div>
-
-    <div class="col-6 col-md-3">
-        <label for="unit_of_measure" class="form-label">Unit</label>
-        <input type="text" class="form-control" id="unit_of_measure" name="unit_of_measure"
-               value="{{ old('unit_of_measure', $editing ? $item->unit_of_measure : '') }}"
-               maxlength="30" placeholder="tablet, bottle, strip">
+        <div class="form-text">In pieces. 0 means not tracked.</div>
     </div>
 
     <div class="col-12 col-md-4">

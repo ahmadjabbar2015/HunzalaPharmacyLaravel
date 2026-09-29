@@ -147,6 +147,28 @@ class Money
         return self::of($a)->isGreaterThan(self::of($b));
     }
 
+    /**
+     * $amount split $divisor ways.
+     *
+     * Divided at scale 4 before rounding to 2, for the same reason percentOf
+     * does: a pack of 30 at 250.00 is 8.33 a tablet, and rounding the division
+     * early would put the shelf price a paisa out on every strip.
+     *
+     * A zero or negative divisor returns the amount unchanged rather than
+     * throwing: pack_size is validated at >= 1 everywhere it is written, and a
+     * price screen is not the place to surface a division error.
+     */
+    public static function divide(string|int|float|BigDecimal $amount, string|int|float|BigDecimal $divisor): string
+    {
+        $by = self::of($divisor);
+
+        if ($by->isLessThanOrEqualTo(0)) {
+            return self::format($amount);
+        }
+
+        return self::format(self::of($amount)->dividedBy($by, self::SCALE + 2, RoundingMode::HalfUp));
+    }
+
     /** The smaller of two amounts - used to cap a refund at what was sold. */
     public static function min(string|int|float|BigDecimal $a, string|int|float|BigDecimal $b): string
     {

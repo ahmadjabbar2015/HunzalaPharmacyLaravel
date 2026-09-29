@@ -35,20 +35,43 @@
 
                         <div class="col-6 col-md-3">
                             <label for="quantity" class="form-label">Quantity</label>
-                            <input type="number" min="1" inputmode="numeric"
-                                   class="form-control qty @error('quantity') is-invalid @enderror"
-                                   id="quantity" name="quantity" value="{{ old('quantity') }}" required>
-                            @error('quantity')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            <div class="input-group">
+                                <input type="number" min="1" inputmode="numeric"
+                                       class="form-control qty @error('quantity') is-invalid @enderror"
+                                       id="quantity" name="quantity" value="{{ old('quantity') }}" required>
+                                {{--
+                                    Asked, not assumed. The invoice counts packs and the
+                                    shelf counts pieces, and a receipt entered in the wrong
+                                    one is out by a factor of {{ $item->pack_size }} while
+                                    looking entirely plausible.
+                                --}}
+                                <select class="form-select" id="quantity_unit" name="quantity_unit"
+                                        style="max-width: 7.5rem">
+                                    <option value="packs" @selected(old('quantity_unit', $item->sells_in_packs ? 'packs' : 'pieces') === 'packs')>packs</option>
+                                    <option value="pieces" @selected(old('quantity_unit', $item->sells_in_packs ? 'packs' : 'pieces') === 'pieces')>{{ str($item->unit_of_measure ?: 'piece')->plural() }}</option>
+                                </select>
+                            </div>
+                            @error('quantity')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            @if ($item->sells_in_packs)
+                                <div class="form-text">1 pack = {{ $item->pack_size }} {{ $item->unit_of_measure ?: 'pieces' }}.</div>
+                            @endif
                         </div>
 
                         <div class="col-6 col-md-3">
-                            <label for="purchase_price" class="form-label">Unit cost</label>
-                            <input type="number" step="0.01" min="0" inputmode="decimal"
-                                   class="form-control money @error('purchase_price') is-invalid @enderror"
-                                   id="purchase_price" name="purchase_price"
-                                   value="{{ old('purchase_price', $item->purchase_price) }}" required>
-                            @error('purchase_price')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            <div class="form-text">What was paid for this lot.</div>
+                            <label for="purchase_price" class="form-label">Cost</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" min="0" inputmode="decimal"
+                                       class="form-control money @error('purchase_price') is-invalid @enderror"
+                                       id="purchase_price" name="purchase_price"
+                                       value="{{ old('purchase_price', $item->purchase_price) }}" required>
+                                <select class="form-select" id="price_unit" name="price_unit"
+                                        style="max-width: 7.5rem">
+                                    <option value="packs" @selected(old('price_unit', 'packs') === 'packs')>per pack</option>
+                                    <option value="pieces" @selected(old('price_unit') === 'pieces')>per piece</option>
+                                </select>
+                            </div>
+                            @error('purchase_price')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            <div class="form-text">What was paid for this lot. Stored per piece.</div>
                         </div>
 
                         <div class="col-6 col-md-4">

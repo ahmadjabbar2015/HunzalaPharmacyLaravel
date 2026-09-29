@@ -185,7 +185,7 @@ class PointOfSale extends Component
     // the cart
     // -----------------------------------------------------------------------
 
-    public function addItem(string $itemUuid): void
+    public function addItem(string $itemUuid, bool $wholePack = false): void
     {
         $item = Item::find($itemUuid);
 
@@ -201,14 +201,25 @@ class PointOfSale extends Component
          */
         $batch = app(ItemService::class)->sellableBatch($item->uuid);
 
+        /*
+         * The rate is per PIECE, always, and the quantity is in pieces - because
+         * that is the unit the ledger counts in. Selling a whole pack adds
+         * pack_size pieces at the piece rate rather than one line at the pack
+         * rate, so the stock movement and the money agree with each other and a
+         * customer buying a box and a customer buying ten singles are charged
+         * the same.
+         */
+        $rate = $item->piecePrice();
+        $quantity = $wholePack ? max(1, (int) $item->pack_size) : 1;
+
         // An identical line - same item, same batch, same rate - increments
         // rather than repeating, which is what someone scanning three boxes of
         // the same thing expects to see.
         foreach ($this->cart as $lineId => $line) {
             if ($line['item_uuid'] === $item->uuid
                 && $line['batch_uuid'] === $batch?->uuid
-                && Money::equals($line['rate'], $item->sales_price)) {
-                $this->cart[$lineId]['quantity']++;
+                && Money::equals($line['rate'], $rate)) {
+                $this->cart[$lineId]['quantity'] += $quantity;
                 unset($this->stockLevels);
 
                 return;
@@ -220,11 +231,21 @@ class PointOfSale extends Component
             'item_name' => $item->item_name,
             'item_code' => $item->item_code,
             'batch_uuid' => $batch?->uuid,
-            'quantity' => 1,
-            'rate' => Money::format($item->sales_price),
+            'quantity' => $quantity,
+            'rate' => Money::format($rate),
+            // Carried on the line so the cart can show "2 packs + 3" without a
+            // query per row while the till is being typed into.
+            'pack_size' => max(1, (int) $item->pack_size),
+            'unit' => $item->unit_of_measure ?: 'pc',
         ];
 
         unset($this->stockLevels);
+    }
+
+    /** Add a whole pack: pack_size pieces in one keystroke. */
+    public function addPack(string $itemUuid): void
+    {
+        $this->addItem($itemUuid, wholePack: true);
     }
 
     public function removeLine(string $lineId): void
@@ -323,7 +344,36 @@ class PointOfSale extends Component
     }
 
     /**
+     * The most this cart may be discounted before a manager is needed.
+     *
+     * null when nothing in the cart carries a limit, which is the normal case.
+     */
+    #[Computed]
+    public function itemDiscountCeiling(): ?string
+    {
+        if ($this->cart === []) {
+            return null;
+        }
+
+        return app(SaleService::class)->discountCeiling($this->cartLines());
+    }
+
+    /** True when the discount is over what the items themselves allow. */
+    #[Computed]
+    public function overItemDiscountLimit(): bool
+    {
+        $ceiling = $this->itemDiscountCeiling;
+
+        return $ceiling !== null && Money::greaterThan($this->discount, $ceiling);
+    }
+
+    /**
      * Whether this discount needs a manager's PIN.
+     *
+     * Two independent reasons, either one enough: the discount is large in
+     * rupees, or it is over the limit an item in the cart carries. The second is
+     * the one that catches a 90% giveaway on a cheap box, which the rupee
+     * threshold never would.
      *
      * The threshold is a shop setting: set too low it simply teaches everyone to
      * fetch a manager for every sale, which trains them to treat the check as
@@ -332,6 +382,10 @@ class PointOfSale extends Component
     #[Computed]
     public function needsAuthorisation(): bool
     {
+        if ($this->overItemDiscountLimit) {
+            return true;
+        }
+
         $threshold = Setting::query()->value('discount_pin_threshold')
             ?? config('pharmacy.defaults.discount_pin_threshold');
 

@@ -48,7 +48,7 @@
                         <th style="width: 7rem;" class="text-end">Arrived</th>
                         <th style="width: 9rem;">Batch</th>
                         <th style="width: 10rem;">Expires</th>
-                        <th style="width: 8rem;" class="text-end">Unit cost</th>
+                        <th style="width: 8rem;" class="text-end">Cost per piece</th>
                     </tr>
                 </thead>
                 <tbody>

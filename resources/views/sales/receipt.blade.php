@@ -18,16 +18,25 @@
 
     <style>
         /* Inline, deliberately: a receipt must print correctly even if the asset
-           bundle failed to load, and it needs none of Bootstrap. */
+           bundle failed to load, and it needs none of Bootstrap.
+
+           This shop prints on plain A4, not a thermal roll. A single receipt
+           is pinned to the top-left quadrant (~105mm x 148mm, a quarter of
+           A4) so the same sheet can be fed back in three more times to fill
+           the other quadrants before it's cut into four receipts. */
         @page {
-            size: {{ $settings->receipt_width ?? '80mm' }} auto;
-            margin: 2mm;
+            size: A4;
+            margin: 0;
         }
 
         body {
-            width: {{ $settings->receipt_width ?? '80mm' }};
-            margin: 0 auto;
-            padding: 2mm;
+            width: 105mm;
+            min-height: 148mm;
+            margin: 0;
+            padding: 3mm;
+            position: absolute;
+            top: 0;
+            left: 0;
             /* A monospace stack so columns align on a printer with no font
                metrics of its own. */
             font-family: 'Courier New', Courier, monospace;
@@ -35,6 +44,7 @@
             line-height: 1.35;
             color: #000;
             background: #fff;
+            box-sizing: border-box;
         }
 
         h1 { font-size: 14px; margin: 0 0 1mm; text-align: center; }

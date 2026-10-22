@@ -12,7 +12,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // nginx terminates TLS one hop in front of this app, so without this
+        // Laravel sees plain http: it would generate http:// links and refuse
+        // to set the secure-only session cookie, logging every user straight
+        // back out. The proxy is on the container network, not the internet.
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

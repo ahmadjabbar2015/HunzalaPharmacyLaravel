@@ -103,8 +103,11 @@
             @foreach ($sale->lines as $line)
                 <tr>
                     {{-- The name wraps onto its own row rather than being cut:
-                         a customer checking a receipt needs to read what it was. --}}
-                    <td colspan="4">{{ $line->item?->item_name ?? '—' }}</td>
+                         a customer checking a receipt needs to read what it was.
+                         Numbered, so whoever bags the order can count items
+                         against the list on a narrow roll where a separate
+                         "#" column would not fit. --}}
+                    <td colspan="4">{{ $loop->iteration }}. {{ $line->item?->item_name ?? '—' }}</td>
                 </tr>
                 <tr>
                     <td class="muted">{{ $line->item?->item_code }}</td>

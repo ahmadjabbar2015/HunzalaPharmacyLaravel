@@ -38,6 +38,10 @@
                 <table class="table mb-0">
                     <thead>
                         <tr>
+                            {{-- A running count, so whoever is pulling stock for this
+                                 sale can tick items off against a number instead of
+                                 recounting the list each time. --}}
+                            <th>#</th>
                             <th>Item</th>
                             <th>Batch</th>
                             <th class="text-end">Qty</th>
@@ -48,6 +52,7 @@
                     <tbody>
                         @foreach ($sale->lines as $line)
                             <tr>
+                                <td class="text-secondary">{{ $loop->iteration }}</td>
                                 <td>
                                     {{ $line->item?->item_name ?? '—' }}
                                     <span class="small text-secondary d-block">{{ $line->item?->item_code }}</span>
@@ -69,12 +74,12 @@
                     </tbody>
                     <tfoot>
                         <tr>
-                            <th colspan="4" class="text-end">Subtotal</th>
+                            <th colspan="5" class="text-end">Subtotal</th>
                             <td class="money">{{ $sale->subtotal_amount }}</td>
                         </tr>
                         @if (! \App\Support\Money::isZero($sale->discount_amount))
                             <tr>
-                                <th colspan="4" class="text-end">
+                                <th colspan="5" class="text-end">
                                     Discount
                                     @if ($sale->discount_reason)
                                         <span class="fw-normal small text-secondary">
@@ -86,7 +91,7 @@
                             </tr>
                         @endif
                         <tr>
-                            <th colspan="4" class="text-end h6">Net</th>
+                            <th colspan="5" class="text-end h6">Net</th>
                             <td class="money h6">{{ $sale->net_amount }}</td>
                         </tr>
                     </tfoot>

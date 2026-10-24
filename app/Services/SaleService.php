@@ -60,6 +60,7 @@ class SaleService
         bool $discountPinVerified = false,
         string $paymentMethod = 'cash',
         ?string $paymentReference = null,
+        string|int|float|null $amountTendered = null,
         bool $madeWhileUnsynced = false,
     ): Sale {
         if ($lines === []) {
@@ -87,11 +88,22 @@ class SaleService
             throw new SaleException('discount cannot exceed the subtotal');
         }
 
+        /*
+         * What the customer handed over, and the change given back - recorded
+         * so a dispute days later ("I gave you a thousand") has an answer
+         * other than someone's memory. Null when nothing was entered: most
+         * sales (every non-cash one, and a cash one where nobody bothered to
+         * log it) have no tender to record, and null means "not recorded"
+         * rather than "handed over nothing".
+         */
+        $tendered = $amountTendered === null || $amountTendered === '' ? null : Money::format($amountTendered);
+        $change = $tendered === null ? null : Money::sub($tendered, $net);
+
         return DB::transaction(function () use (
             $lines, $staffMemberUuid, $deviceId, $sessionUuid, $customerUuid,
             $familyMemberUuid, $discountType, $discountReason, $discountPinVerified,
             $paymentMethod, $paymentReference, $madeWhileUnsynced,
-            $subtotal, $discount, $net
+            $subtotal, $discount, $net, $tendered, $change
         ) {
             $now = BusinessDate::nowUtc();
             $businessDate = BusinessDate::for($now)->toDateString();
@@ -115,6 +127,8 @@ class SaleService
                 'net_amount' => $net,
                 'payment_method' => $paymentMethod,
                 'payment_reference' => $paymentReference,
+                'amount_tendered' => $tendered,
+                'change_due' => $change,
                 'made_while_unsynced' => $madeWhileUnsynced,
                 'origin_device_id' => $deviceId,
             ]);

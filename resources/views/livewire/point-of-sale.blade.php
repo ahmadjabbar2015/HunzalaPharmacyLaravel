@@ -299,6 +299,29 @@
                                     <input type="text" id="paymentReference" class="form-control form-control-sm"
                                            wire:model="paymentReference" placeholder="transaction id">
                                 </div>
+                            @else
+                                {{--
+                                    What the customer handed over, and the change
+                                    owed back. The bill itself stays exact - this
+                                    just saves mental arithmetic at the till when
+                                    someone pays with a round note.
+                                --}}
+                                <div class="mb-0">
+                                    <label for="amountTendered" class="form-label small">Customer handed over</label>
+                                    <input type="text" inputmode="decimal" id="amountTendered"
+                                           class="form-control form-control-sm money"
+                                           wire:model.live.debounce.200ms="amountTendered" placeholder="0.00">
+
+                                    @if ($this->changeDue !== null)
+                                        <div class="form-text {{ $this->tenderShort ? 'text-danger' : '' }}">
+                                            @if ($this->tenderShort)
+                                                Short by <span class="money">{{ \App\Support\Money::sub('0', $this->changeDue) }}</span>
+                                            @else
+                                                Change due: <span class="money fw-semibold">{{ $this->changeDue }}</span>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
                             @endif
                         </div>
                     </div>

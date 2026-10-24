@@ -72,6 +72,9 @@ class PointOfSale extends Component
 
     public string $paymentReference = '';
 
+    /** What the customer handed over, for cash. Never persisted - it's a till aid, not a ledger fact. */
+    public string $amountTendered = '';
+
     /** The staff PIN, entered at save to attribute the sale. Never persisted. */
     public string $pin = '';
 
@@ -282,7 +285,7 @@ class PointOfSale extends Component
     {
         $this->cart = [];
         $this->clearCustomer();
-        $this->reset(['discountAmount', 'discountReason', 'paymentReference', 'pin', 'authorisingPin']);
+        $this->reset(['discountAmount', 'discountReason', 'paymentReference', 'amountTendered', 'pin', 'authorisingPin']);
         $this->resetErrorBag();
         unset($this->stockLevels);
     }
@@ -341,6 +344,35 @@ class PointOfSale extends Component
     public function discountTooLarge(): bool
     {
         return Money::isNegative($this->net);
+    }
+
+    /**
+     * Change owed on a cash tender.
+     *
+     * A till aid, not a ledger fact - what the customer handed over and what is
+     * owed back never gets written down, because the sale is recorded at its
+     * exact amount regardless of which notes changed hands. This is what lets
+     * staff round what they ASK for to the nearest note without rounding what
+     * the bill actually says.
+     *
+     * Null when nothing has been entered yet, so the view can tell "no tender
+     * typed" apart from "tendered exactly nothing".
+     */
+    #[Computed]
+    public function changeDue(): ?string
+    {
+        if (trim($this->amountTendered) === '') {
+            return null;
+        }
+
+        return Money::sub(Money::format($this->amountTendered), $this->net);
+    }
+
+    /** True when the amount handed over does not cover the bill. */
+    #[Computed]
+    public function tenderShort(): bool
+    {
+        return $this->changeDue !== null && Money::isNegative($this->changeDue);
     }
 
     /**
@@ -503,6 +535,9 @@ class PointOfSale extends Component
                 discountPinVerified: $authorisedBy !== null,
                 paymentMethod: $this->paymentMethod,
                 paymentReference: $this->paymentReference ?: null,
+                amountTendered: $this->paymentMethod === 'cash' && trim($this->amountTendered) !== ''
+                    ? $this->amountTendered
+                    : null,
             );
         } catch (SaleException $e) {
             // A rule the component did not catch first. Shown against the cart

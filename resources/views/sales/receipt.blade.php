@@ -137,6 +137,19 @@
             <td class="muted">Paid by {{ $sale->payment_method }}</td>
             <td class="num muted">{{ $sale->payment_reference }}</td>
         </tr>
+        @if ($sale->amount_tendered !== null)
+            {{-- Printed proof of what changed hands, for the dispute that
+                 shows up a week later - "the bill" alone only proves what was
+                 owed. --}}
+            <tr>
+                <td class="muted">Tendered</td>
+                <td class="num muted">{{ $sale->amount_tendered }}</td>
+            </tr>
+            <tr>
+                <td class="muted">Change</td>
+                <td class="num muted">{{ $sale->change_due }}</td>
+            </tr>
+        @endif
     </table>
 
     <hr>

@@ -36,6 +36,8 @@ class Sale extends BaseModel
             'subtotal_amount' => 'decimal:2',
             'discount_amount' => 'decimal:2',
             'net_amount' => 'decimal:2',
+            'amount_tendered' => 'decimal:2',
+            'change_due' => 'decimal:2',
             'discount_pin_verified' => 'boolean',
             'print_count' => 'integer',
             'receipt_pending_print' => 'boolean',

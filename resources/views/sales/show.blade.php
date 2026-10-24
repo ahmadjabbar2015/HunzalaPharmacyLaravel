@@ -160,6 +160,19 @@
                         @endif
                     </dd>
 
+                    @if ($sale->amount_tendered !== null)
+                        {{--
+                            The evidence for "I gave you a thousand" - what was
+                            handed over and what went back, recorded at the
+                            till rather than relied on from memory.
+                        --}}
+                        <dt class="col-5">Tendered</dt>
+                        <dd class="col-7 money">{{ $sale->amount_tendered }}</dd>
+
+                        <dt class="col-5">Change given</dt>
+                        <dd class="col-7 money">{{ $sale->change_due }}</dd>
+                    @endif
+
                     @if ($sale->discount_pin_verified)
                         <dt class="col-5">Discount</dt>
                         <dd class="col-7">Authorised by PIN</dd>

@@ -120,6 +120,13 @@
 
     <table>
         <tr>
+            {{-- Total pieces, not line count: lets whoever bags the order
+                 count items against the receipt without re-adding every
+                 line's quantity by hand. --}}
+            <td>Total items</td>
+            <td class="num">{{ $sale->lines->sum('quantity') }}</td>
+        </tr>
+        <tr>
             <td>Subtotal</td>
             <td class="num">{{ $sale->subtotal_amount }}</td>
         </tr>

@@ -48,7 +48,10 @@ RUN composer install \
 # ---------------------------------------------------------------------------
 # Stage 3 - runtime.
 # ---------------------------------------------------------------------------
-FROM php:8.3-fpm-alpine AS runtime
+# Pinned (not floating 8.3-fpm-alpine) to guarantee the CVE-2026-109618 /
+# CVE-2026-109619 (PHP2Shell) unauthenticated RCE fixes are present - both
+# affect every PHP 8.3.x build before 8.3.36.
+FROM php:8.3.36-fpm-alpine AS runtime
 
 # mysql-client is here for the backup service, which shells out to mysqldump.
 RUN apk add --no-cache \

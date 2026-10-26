@@ -68,14 +68,26 @@ it('refuses a second open session', function () {
         ->toThrow(SessionException::class);
 });
 
-it('allows a new session once the previous one is closed', function () {
+it('allows a new session the next day once the previous one is closed', function () {
+    $this->travelTo('2026-09-01 10:00:00');
     $first = $this->sessions->open(userUuid: $this->user->uuid, openingFloat: 500, deviceId: DEVICE);
     $this->sessions->close(userUuid: $this->user->uuid, countedCash: 500, deviceId: DEVICE);
 
+    $this->travelTo('2026-09-02 10:00:00');
     $second = $this->sessions->open(userUuid: $this->user->uuid, openingFloat: 300, deviceId: DEVICE);
 
     expect($second->uuid)->not->toBe($first->uuid)
         ->and($this->sessions->openSession()->uuid)->toBe($second->uuid);
+});
+
+it('refuses to reopen the drawer the same business day after it is closed', function () {
+    // One session per day: open every day, close every day. Closing today's
+    // drawer must not unlock a second count the same day.
+    $this->sessions->open(userUuid: $this->user->uuid, openingFloat: 500, deviceId: DEVICE);
+    $this->sessions->close(userUuid: $this->user->uuid, countedCash: 500, deviceId: DEVICE);
+
+    expect(fn () => $this->sessions->open(userUuid: $this->user->uuid, openingFloat: 300, deviceId: DEVICE))
+        ->toThrow(SessionException::class);
 });
 
 it('distinguishes an uncounted float from a counted zero', function () {
@@ -158,10 +170,12 @@ it('ignores a mobile refund in expected cash', function () {
 });
 
 it('ignores another session\'s sales', function () {
+    $this->travelTo('2026-09-01 10:00:00');
     $drawer = $this->sessions->open(userUuid: $this->user->uuid, openingFloat: 500, deviceId: DEVICE);
     addSale($drawer, $this->user, '300.00');
     $this->sessions->close(userUuid: $this->user->uuid, countedCash: 800, deviceId: DEVICE);
 
+    $this->travelTo('2026-09-02 10:00:00');
     $second = $this->sessions->open(userUuid: $this->user->uuid, openingFloat: 100, deviceId: DEVICE);
     addSale($second, $this->user, '50.00');
 

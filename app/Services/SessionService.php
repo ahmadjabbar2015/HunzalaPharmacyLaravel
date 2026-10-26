@@ -19,6 +19,10 @@ use Illuminate\Support\Facades\Log;
  * attribution. That is how the shop actually works, and modelling it as
  * per-user sessions would force staff to invent a fiction at the till.
  *
+ * Exactly one session per business day: open every day, close every day.
+ * Once today's drawer has been opened and closed it cannot be reopened, so a
+ * day's takings always live in a single, final count.
+ *
  * The variance this class computes is the shop's main control against till
  * shrinkage, which is why the arithmetic is small, explicit, and exact.
  *
@@ -70,6 +74,21 @@ class SessionService
         return $openedOn->lt(BusinessDate::for()) ? $open : null;
     }
 
+    /**
+     * The session (open or closed) already dated to today, or null.
+     *
+     * Enforces one drawer session per business day: open every day, close
+     * every day. Once today's drawer has been opened and closed, it cannot
+     * be reopened for a second count the same day.
+     */
+    public function sessionForToday(): ?DrawerSession
+    {
+        return DrawerSession::query()
+            ->whereDate('session_date', BusinessDate::today())
+            ->latest('opened_at')
+            ->first();
+    }
+
     // -----------------------------------------------------------------------
     // open
     // -----------------------------------------------------------------------
@@ -93,6 +112,15 @@ class SessionService
             // Two open drawers would split one evening's takings across two
             // variance calculations, and neither would reconcile.
             throw new SessionException('a session is already open - join it instead of opening another');
+        }
+
+        $today = BusinessDate::today();
+        if ($this->sessionForToday() !== null) {
+            // One session per business day: once today's drawer has been
+            // opened and closed, it does not reopen for a second count.
+            throw new SessionException(
+                "the drawer for {$today} was already opened and closed - only one session per day is allowed"
+            );
         }
 
         return DB::transaction(function () use ($userUuid, $openingFloat, $deviceId, $isProvisional, $notes) {

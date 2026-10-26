@@ -166,6 +166,9 @@
                 <table class="table table-sm align-middle mb-0">
                     <thead>
                         <tr>
+                            {{-- A running count, so a line can be checked off
+                                 against a number while the order is bagged. --}}
+                            <th>#</th>
                             <th>Item</th>
                             <th class="text-center" style="width: 9rem;">Qty</th>
                             <th class="text-end">Rate</th>
@@ -176,6 +179,7 @@
                     <tbody>
                         @forelse ($cart as $lineId => $line)
                             <tr wire:key="line-{{ $lineId }}">
+                                <td class="text-secondary">{{ $loop->iteration }}</td>
                                 <td>
                                     <span class="d-block">{{ $line['item_name'] }}</span>
                                     <span class="small text-secondary">{{ $line['item_code'] }}</span>
@@ -234,7 +238,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-secondary py-4 text-center">
+                                <td colspan="6" class="text-secondary py-4 text-center">
                                     Search or scan to add the first item.
                                 </td>
                             </tr>

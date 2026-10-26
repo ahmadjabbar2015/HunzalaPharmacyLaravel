@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PrintLog;
 use App\Models\Sale;
+use App\Models\SaleReturn;
 use App\Models\Setting;
 use App\Support\BusinessDate;
 use App\Support\Money;
@@ -46,6 +47,19 @@ class SaleController extends Controller
          */
         $sales = $query->paginate(50)->withQueryString();
 
+        /*
+         * Sales are never edited (see the class doc): a returned sale keeps the
+         * net_amount it was sold for, so filteredTotal below is gross takings,
+         * not what the shop actually kept. Shown beside it rather than netted
+         * off, the same choice ReportService::dailySales makes - an owner
+         * scanning a filter full of "returned" badges needs to see that
+         * reflected in the header total, not just on each row.
+         */
+        $returns = SaleReturn::query()
+            ->whereIn('original_sale_uuid', $query->clone()->select('sales.uuid'))
+            ->selectRaw('COUNT(*) as row_count, COALESCE(SUM(total_amount), 0) as total')
+            ->first();
+
         return view('sales.index', [
             'sales' => $sales,
             'filters' => $filters,
@@ -54,6 +68,8 @@ class SaleController extends Controller
             // filtering to a day wants that day's takings, and a per-page figure
             // would silently answer a different question.
             'filteredTotal' => Money::format($query->clone()->sum('net_amount')),
+            'filteredReturnsCount' => (int) ($returns->row_count ?? 0),
+            'filteredReturnsTotal' => Money::format($returns->total ?? 0),
         ]);
     }
 

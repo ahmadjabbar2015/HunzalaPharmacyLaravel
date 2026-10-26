@@ -90,6 +90,31 @@ it('rejects a filter value it does not understand', function () {
         ->assertSessionHasErrors('payment_method');
 });
 
+it('shows what came back beside the total, without netting it off', function () {
+    // The sale's own net_amount never changes once it is returned against
+    // (see the class doc), so the gross total alone would look like clean
+    // takings on a filter that was entirely returned - this is the one place
+    // the header says otherwise.
+    app(ReturnService::class)->create(
+        originalSaleUuid: $this->sale->uuid,
+        lines: [new ReturnLine($this->sale->lines()->first()->uuid, 2)],
+        staffMemberUuid: $this->staff->uuid,
+        deviceId: DEVICE,
+    );
+
+    $this->get(route('sales.index'))
+        ->assertOk()
+        // Gross, untouched.
+        ->assertSee('200.00')
+        // And what came back, shown beside it.
+        ->assertSee('1 return')
+        ->assertSee('given back');
+});
+
+it('says nothing about returns when there are none in the filter', function () {
+    $this->get(route('sales.index'))->assertOk()->assertDontSee('given back');
+});
+
 // ---------------------------------------------------------------------------
 // the detail
 // ---------------------------------------------------------------------------

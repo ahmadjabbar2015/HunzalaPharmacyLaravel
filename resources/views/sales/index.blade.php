@@ -6,9 +6,24 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h4 mb-0">Sales</h1>
-    <span class="text-secondary">
-        {{ number_format($sales->total()) }} {{ Str::plural('sale', $sales->total()) }}
-        &middot; <span class="money fw-semibold">{{ $filteredTotal }}</span>
+    <span class="text-end">
+        <span class="text-secondary">
+            {{ number_format($sales->total()) }} {{ Str::plural('sale', $sales->total()) }}
+            &middot; <span class="money fw-semibold">{{ $filteredTotal }}</span>
+        </span>
+        @if ($filteredReturnsCount > 0)
+            {{--
+                Shown beside the gross total, never netted off it: a sale's
+                own net_amount never changes once a return is recorded
+                against it (see SaleController), so this is the only place
+                this filter's totals say anything was given back.
+            --}}
+            <br>
+            <span class="text-warning-emphasis small">
+                {{ number_format($filteredReturnsCount) }} {{ Str::plural('return', $filteredReturnsCount) }}
+                &middot; <span class="money">{{ $filteredReturnsTotal }}</span> given back
+            </span>
+        @endif
     </span>
 </div>
 

@@ -139,6 +139,12 @@ class ReportService
         $report['return_count'] = (int) ($returns->row_count ?? 0);
         $report['return_total'] = Money::format($returns->total ?? 0);
 
+        // What actually stayed in the till. total_net alone is gross sold -
+        // a sale is never edited, so it does not fall when returned against -
+        // and at any real volume (30,000 sold against 20,000 returned) reading
+        // it as takings is off by a factor of several times over.
+        $report['net_takings'] = Money::sub($report['total_net'], $report['return_total']);
+
         return $report;
     }
 
@@ -230,6 +236,12 @@ class ReportService
 
         $report['return_count'] = (int) ($returns->row_count ?? 0);
         $report['return_total'] = Money::format($returns->total ?? 0);
+
+        // What actually stayed in the till. total_net alone is gross sold -
+        // a sale is never edited, so it does not fall when returned against -
+        // and at any real volume (30,000 sold against 20,000 returned) reading
+        // it as takings is off by a factor of several times over.
+        $report['net_takings'] = Money::sub($report['total_net'], $report['return_total']);
 
         return $report;
     }

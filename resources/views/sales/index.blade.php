@@ -9,19 +9,25 @@
     <span class="text-end">
         <span class="text-secondary">
             {{ number_format($sales->total()) }} {{ Str::plural('sale', $sales->total()) }}
-            &middot; <span class="money fw-semibold">{{ $filteredTotal }}</span>
+            &middot; <span class="money">{{ $filteredTotal }}</span> sold
         </span>
         @if ($filteredReturnsCount > 0)
             {{--
-                Shown beside the gross total, never netted off it: a sale's
-                own net_amount never changes once a return is recorded
-                against it (see SaleController), so this is the only place
-                this filter's totals say anything was given back.
+                Gross sold and what came back are each kept whole - a sale's
+                own net_amount never changes once it is returned against (see
+                SaleController) - but "sold" alone reads as takings, which at
+                30,000 sold against 20,000 returned is off by a factor of
+                three. "Net" is the number that answers what actually stayed
+                in the till.
             --}}
             <br>
             <span class="text-warning-emphasis small">
                 {{ number_format($filteredReturnsCount) }} {{ Str::plural('return', $filteredReturnsCount) }}
                 &middot; <span class="money">{{ $filteredReturnsTotal }}</span> given back
+            </span>
+            <br>
+            <span class="fw-semibold">
+                Net &middot; <span class="money">{{ $filteredNetTotal }}</span>
             </span>
         @endif
     </span>

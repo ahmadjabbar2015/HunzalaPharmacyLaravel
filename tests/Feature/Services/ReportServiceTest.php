@@ -171,7 +171,10 @@ it('lists returns beside the takings instead of netting them off', function () {
     // day from a day of refunds.
     expect($report['total_net'])->toBe('48.00')
         ->and($report['return_count'])->toBe(1)
-        ->and($report['return_total'])->toBe('12.00');
+        ->and($report['return_total'])->toBe('12.00')
+        // But net_takings DOES subtract it - this is the one figure that
+        // answers what actually stayed in the till.
+        ->and($report['net_takings'])->toBe('36.00');
 });
 
 it('leaves out sales from other days', function () {
@@ -257,6 +260,31 @@ it('splits a session into cash and mobile, because only cash is in the drawer', 
         ->and($report['mobile_sales'])->toBe('24.00')
         ->and($report['opened_by'])->toBe('Ahmed Khan')
         ->and($report['status'])->toBe('open');
+});
+
+it('nets a session\'s returns off its takings without touching the gross figure', function () {
+    $drawer = app(SessionService::class)->open($this->ahmed->uuid, '1000.00', DEVICE);
+
+    $sale = $this->sales->create(
+        lines: [new CartLine($this->panadol->uuid, 4, '12.00', $this->panadolBatch->uuid)],
+        staffMemberUuid: $this->ahmed->uuid,
+        deviceId: DEVICE,
+        sessionUuid: $drawer->uuid,
+    );
+
+    app(ReturnService::class)->create(
+        originalSaleUuid: $sale->uuid,
+        lines: [new ReturnLine($sale->lines()->first()->uuid, 1)],
+        staffMemberUuid: $this->ahmed->uuid,
+        deviceId: DEVICE,
+        sessionUuid: $drawer->uuid,
+    );
+
+    $report = $this->reports->sessionSummary($drawer->uuid);
+
+    expect($report['total_net'])->toBe('48.00')
+        ->and($report['return_total'])->toBe('12.00')
+        ->and($report['net_takings'])->toBe('36.00');
 });
 
 it('shows no variance at all for a drawer that has not been counted', function () {

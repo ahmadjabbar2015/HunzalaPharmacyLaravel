@@ -49,6 +49,18 @@
             <div class="h4 mb-0 money">{{ $report['return_total'] }}</div>
         </div></div>
     </div>
+    <div class="col-6 col-lg-3">
+        {{--
+            Takings minus returns, so the two cards above do not have to be
+            subtracted by hand to answer what the day actually brought in. At
+            any real volume - 30,000 sold against 20,000 returned - reading
+            "Takings" alone is off by a factor of several times over.
+        --}}
+        <div class="card h-100 border-primary"><div class="card-body">
+            <div class="small text-secondary">Net takings</div>
+            <div class="h4 mb-0 money fw-bold">{{ $report['net_takings'] }}</div>
+        </div></div>
+    </div>
 </div>
 
 <div class="row g-3 mb-3">

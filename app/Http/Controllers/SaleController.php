@@ -60,6 +60,9 @@ class SaleController extends Controller
             ->selectRaw('COUNT(*) as row_count, COALESCE(SUM(total_amount), 0) as total')
             ->first();
 
+        $filteredTotal = Money::format($query->clone()->sum('net_amount'));
+        $filteredReturnsTotal = Money::format($returns->total ?? 0);
+
         return view('sales.index', [
             'sales' => $sales,
             'filters' => $filters,
@@ -67,9 +70,16 @@ class SaleController extends Controller
             // The total for the CURRENT FILTER, not the current page. Someone
             // filtering to a day wants that day's takings, and a per-page figure
             // would silently answer a different question.
-            'filteredTotal' => Money::format($query->clone()->sum('net_amount')),
+            'filteredTotal' => $filteredTotal,
             'filteredReturnsCount' => (int) ($returns->row_count ?? 0),
-            'filteredReturnsTotal' => Money::format($returns->total ?? 0),
+            'filteredReturnsTotal' => $filteredReturnsTotal,
+
+            // What actually stayed in the till: gross sales minus what went
+            // back out as refunds. At 30,000 sold against 20,000 returned,
+            // reading "30,000" as the day's takings is off by a factor of
+            // three - this is the number that answers "how much did we
+            // actually make".
+            'filteredNetTotal' => Money::sub($filteredTotal, $filteredReturnsTotal),
         ]);
     }
 

@@ -108,7 +108,10 @@ it('shows what came back beside the total, without netting it off', function () 
         ->assertSee('200.00')
         // And what came back, shown beside it.
         ->assertSee('1 return')
-        ->assertSee('given back');
+        ->assertSee('given back')
+        // And the number that actually matters: 200.00 sold, all of it
+        // returned, net nothing stayed in the till.
+        ->assertSee('0.00');
 });
 
 it('says nothing about returns when there are none in the filter', function () {

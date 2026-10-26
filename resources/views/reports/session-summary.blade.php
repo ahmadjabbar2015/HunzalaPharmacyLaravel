@@ -73,6 +73,12 @@
                     <tr><th>Mobile</th><td class="money">{{ $report['mobile_sales'] }}</td></tr>
                     <tr class="fw-semibold"><th>Total takings</th><td class="money">{{ $report['total_net'] }}</td></tr>
                     <tr><th>Returns</th><td class="qty">{{ $report['return_count'] }}</td></tr>
+                    {{--
+                        Total takings is gross - a sale is never edited, so it
+                        does not fall when returned against - so this is the
+                        number that answers what the shift actually brought in.
+                    --}}
+                    <tr class="fw-semibold table-group-divider"><th>Net takings</th><td class="money">{{ $report['net_takings'] }}</td></tr>
                 </tbody>
             </table>
         </div>

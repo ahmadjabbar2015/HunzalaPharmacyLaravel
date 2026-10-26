@@ -152,11 +152,11 @@
                  shows up a week later - "the bill" alone only proves what was
                  owed. --}}
             <tr>
-                <td class="muted">Tendered</td>
+                <td class="muted">Cash Paid</td>
                 <td class="num muted">{{ $sale->amount_tendered }}</td>
             </tr>
             <tr>
-                <td class="muted">Change</td>
+                <td class="muted">Customer Balance</td>
                 <td class="num muted">{{ $sale->change_due }}</td>
             </tr>
         @endif

@@ -96,6 +96,7 @@ class InventoryController extends Controller
             'batches' => $batches,
             'batchQuantities' => $batchQuantities,
             'sellableBatch' => $this->items->sellableBatch($item->uuid),
+            'canDelete' => ! $this->stock->hasMovements($item->uuid),
 
             /*
              * The ledger for this item, most recent first. This is the screen
@@ -171,6 +172,23 @@ class InventoryController extends Controller
         }
 
         return redirect()->route('inventory.show', $item)->with('status', 'Item updated.');
+    }
+
+    /**
+     * Remove an item that was never actually stocked - a duplicate entry or a
+     * typo caught before anything was received against it. Anything with
+     * recorded stock activity is refused (ItemService::delete); mark it
+     * inactive instead so its history stays readable.
+     */
+    public function destroy(Item $item): RedirectResponse
+    {
+        try {
+            $this->items->delete($item);
+        } catch (ItemException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('inventory.index')->with('status', "{$item->item_name} deleted.");
     }
 
     // -----------------------------------------------------------------------

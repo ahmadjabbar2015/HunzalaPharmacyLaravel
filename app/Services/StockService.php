@@ -71,6 +71,21 @@ class StockService
     }
 
     /**
+     * Whether this item has ANY ledger row - received, sold, returned or
+     * adjusted. An item with movements cannot be deleted (ItemService::delete):
+     * every one of those rows, and every receipt and report built from them,
+     * names this item, and a deleted item vanishes from every query by default
+     * (RULE 4's global scope) - so deleting it would make history unreadable
+     * rather than erasing anything.
+     */
+    public function hasMovements(string $itemUuid): bool
+    {
+        return StockTransaction::query()
+            ->where('item_uuid', $itemUuid)
+            ->exists();
+    }
+
+    /**
      * Quantities for many items in ONE query.
      *
      * LARAVEL_PLAN.md §5's second named trap. quantityFor() is a SUM() per item,

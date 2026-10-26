@@ -75,6 +75,35 @@ it('trims whitespace off the code and name', function () {
 });
 
 // ---------------------------------------------------------------------------
+// deleting
+// ---------------------------------------------------------------------------
+
+it('deletes an item that has never been received against', function () {
+    $this->items->delete($this->item);
+
+    expect(Item::find($this->item->uuid))->toBeNull();
+});
+
+it('refuses to delete an item with any stock movement', function () {
+    receiveBatch($this->item->uuid, 'B-1', '2027-01-01', 10);
+
+    expect(fn () => $this->items->delete($this->item))->toThrow(ItemException::class);
+
+    // Refused, not half-done: the item and its batch are both still there.
+    expect(Item::find($this->item->uuid))->not->toBeNull();
+});
+
+it('refuses to delete an item with only an adjustment recorded', function () {
+    // Adjustments have no batch, so a check that only looked at batches would
+    // miss this and delete an item the ledger still names.
+    $this->stock->adjust(
+        itemUuid: $this->item->uuid, qtyChange: 5, reason: 'found extra on the shelf', deviceId: DEVICE,
+    );
+
+    expect(fn () => $this->items->delete($this->item))->toThrow(ItemException::class);
+});
+
+// ---------------------------------------------------------------------------
 // receiving goods
 // ---------------------------------------------------------------------------
 

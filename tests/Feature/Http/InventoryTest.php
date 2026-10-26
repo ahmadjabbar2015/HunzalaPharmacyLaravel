@@ -224,6 +224,48 @@ it('deactivates an item from the edit form', function () {
 });
 
 // ---------------------------------------------------------------------------
+// deleting
+// ---------------------------------------------------------------------------
+
+it('deletes an item that was never stocked', function () {
+    $manager = User::factory()->create(['username' => 'manager1', 'role' => 'manager']);
+
+    $this->actingAs($manager)->delete(route('inventory.destroy', $this->item))
+        ->assertRedirect(route('inventory.index'));
+
+    expect(Item::find($this->item->uuid))->toBeNull();
+});
+
+it('refuses to delete an item with recorded stock activity', function () {
+    $manager = User::factory()->create(['username' => 'manager2', 'role' => 'manager']);
+    $batch = ItemBatch::factory()->for($this->item, 'item')->create(['batch_number' => 'B-3301']);
+    $this->stock->receive(itemUuid: $this->item->uuid, batchUuid: $batch->uuid, quantity: 10, deviceId: DEVICE);
+
+    $this->actingAs($manager)->delete(route('inventory.destroy', $this->item))
+        ->assertRedirect();
+
+    // Still there, and still the same row - the ledger still names it.
+    expect(Item::find($this->item->uuid))->not->toBeNull();
+});
+
+it('refuses plain staff the delete button entirely', function () {
+    $this->actingAs($this->staff)->delete(route('inventory.destroy', $this->item))
+        ->assertForbidden();
+
+    expect(Item::find($this->item->uuid))->not->toBeNull();
+});
+
+it('hides the delete button from staff and shows it to a manager for an unstocked item', function () {
+    $manager = User::factory()->create(['username' => 'manager3', 'role' => 'manager']);
+
+    $this->actingAs($this->staff)->get(route('inventory.show', $this->item))
+        ->assertOk()->assertDontSee('Delete');
+
+    $this->actingAs($manager)->get(route('inventory.show', $this->item))
+        ->assertOk()->assertSee('Delete');
+});
+
+// ---------------------------------------------------------------------------
 // receiving
 // ---------------------------------------------------------------------------
 

@@ -53,6 +53,13 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('manage-customers', fn (User $user) => true);
         Gate::define('manage-purchasing', fn (User $user) => true);
 
+        /*
+         * Deleting an item is not staff-level like the rest of inventory: it is
+         * the one inventory action ItemService cannot undo by re-editing, so it
+         * gets the same bar as closing the drawer.
+         */
+        Gate::define('delete-item', fn (User $user) => $user->isManagerOrOwner());
+
         // Opening the drawer is staff-level - whoever arrives first does it.
         Gate::define('open-drawer', fn (User $user) => true);
 

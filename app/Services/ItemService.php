@@ -183,6 +183,31 @@ class ItemService
         return $item;
     }
 
+    /**
+     * Remove an item that was never actually stocked.
+     *
+     * Soft delete (RULE 4), and only when nothing in the ledger names it: a
+     * receipt, a report, or the ledger itself reads an item through its
+     * relation, and the global not-deleted scope would make that relation
+     * resolve to null the moment the item disappears - turning old paperwork
+     * unreadable. An item that was created by mistake and never received
+     * against has no such row anywhere, so deleting it loses nothing.
+     *
+     * @throws ItemException if the item has any stock movement
+     */
+    public function delete(Item $item): void
+    {
+        if ($this->stock->hasMovements($item->uuid)) {
+            throw new ItemException(
+                "{$item->item_name} has recorded stock activity and cannot be deleted - mark it inactive instead"
+            );
+        }
+
+        $item->softDelete();
+
+        Log::info('item deleted', ['code' => $item->item_code]);
+    }
+
     // -----------------------------------------------------------------------
     // receiving goods
     // -----------------------------------------------------------------------

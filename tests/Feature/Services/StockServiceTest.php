@@ -92,6 +92,16 @@ it('returns zero for an item with no ledger rows', function () {
     expect($this->stock->quantityFor($this->item->uuid))->toBe(0);
 });
 
+it('reports no movements for an item never received against', function () {
+    expect($this->stock->hasMovements($this->item->uuid))->toBeFalse();
+});
+
+it('reports a movement as soon as one ledger row exists', function () {
+    $this->stock->receive(itemUuid: $this->item->uuid, batchUuid: $this->batch->uuid, quantity: 50, deviceId: DEVICE);
+
+    expect($this->stock->hasMovements($this->item->uuid))->toBeTrue();
+});
+
 // ---------------------------------------------------------------------------
 // append-only guarantees
 // ---------------------------------------------------------------------------

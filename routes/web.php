@@ -66,6 +66,12 @@ Route::middleware('auth')->group(function () {
 
         Route::get('inventory/{item}/adjust', [InventoryController::class, 'adjustForm'])->name('inventory.adjust.form');
         Route::post('inventory/{item}/adjust', [InventoryController::class, 'adjust'])->name('inventory.adjust');
+
+        // Manager/owner only, and only for an item with no stock movement at
+        // all - see ItemService::delete. Anything that has been received or
+        // sold is deactivated instead, never deleted.
+        Route::delete('inventory/{item}', [InventoryController::class, 'destroy'])
+            ->middleware('can:delete-item')->name('inventory.destroy');
     });
 
     // ---------------------------------------------------------------------

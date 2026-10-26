@@ -41,6 +41,15 @@ class SaleController extends Controller
             ->latest('sale_time');
 
         /*
+         * Cloned BEFORE paginate() below, which sets LIMIT/OFFSET on $query's
+         * underlying builder IN PLACE rather than returning a new one. A clone
+         * taken after that carries the LIMIT with it, and MySQL below 8.0.19
+         * refuses a LIMIT inside an IN (...) subquery outright (error 1235) -
+         * the bug that took /sales down in production on this exact line.
+         */
+        $filteredQuery = $query->clone();
+
+        /*
          * Paginated at 50, the same as the Python client. Not because the table
          * would be slow to render, but because an unbounded query over a year of
          * sales on the shop's 1 GB VPS is how a page times out.
@@ -56,11 +65,11 @@ class SaleController extends Controller
          * reflected in the header total, not just on each row.
          */
         $returns = SaleReturn::query()
-            ->whereIn('original_sale_uuid', $query->clone()->select('sales.uuid'))
+            ->whereIn('original_sale_uuid', $filteredQuery->clone()->select('sales.uuid'))
             ->selectRaw('COUNT(*) as row_count, COALESCE(SUM(total_amount), 0) as total')
             ->first();
 
-        $filteredTotal = Money::format($query->clone()->sum('net_amount'));
+        $filteredTotal = Money::format($filteredQuery->clone()->sum('net_amount'));
         $filteredReturnsTotal = Money::format($returns->total ?? 0);
 
         return view('sales.index', [

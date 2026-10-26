@@ -270,6 +270,7 @@ class InventoryController extends Controller
             'derivedQty' => $this->stock->quantityFor($item->uuid),
             'batches' => $batches,
             'batchQuantities' => $this->stock->batchQuantitiesFor($batches->pluck('uuid')->all()),
+            'canDelete' => ! $this->stock->hasMovements($item->uuid),
         ]);
     }
 

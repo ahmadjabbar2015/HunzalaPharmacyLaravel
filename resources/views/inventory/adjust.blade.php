@@ -80,11 +80,21 @@
                         </div>
                     </div>
 
-                    <div class="mt-4">
-                        <button type="submit" class="btn btn-warning">Record the adjustment</button>
-                        <a href="{{ route('inventory.show', $item) }}" class="btn btn-link">Cancel</a>
+                    <div class="mt-4 d-flex justify-content-between align-items-center">
+                        <div>
+                            <button type="submit" class="btn btn-warning">Record the adjustment</button>
+                            <a href="{{ route('inventory.show', $item) }}" class="btn btn-link">Cancel</a>
+                        </div>
                     </div>
                 </form>
+
+                {{--
+                    Outside the adjustment form - it is a separate action
+                    against a different route and must not submit alongside it.
+                --}}
+                <div class="mt-2">
+                    @include('inventory._delete_button')
+                </div>
             </div>
         </div>
     </div>

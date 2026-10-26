@@ -27,27 +27,7 @@
         <a href="{{ route('inventory.adjust.form', $item) }}" class="btn btn-outline-warning">Adjust</a>
         <a href="{{ route('inventory.edit', $item) }}" class="btn btn-outline-secondary">Edit</a>
 
-        @can('delete-item')
-            @if ($canDelete)
-                {{--
-                    Only reachable when nothing in the ledger names this item
-                    (see InventoryController::show / ItemService::delete).
-                    Anything received or sold is deactivated from the Edit
-                    form instead - its history has to stay readable.
-                --}}
-                <form method="POST" action="{{ route('inventory.destroy', $item) }}" class="d-inline"
-                      onsubmit="return confirm('Delete {{ $item->item_name }}? This cannot be undone.')">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-outline-danger">Delete</button>
-                </form>
-            @else
-                <button type="button" class="btn btn-outline-danger" disabled
-                        title="Has recorded stock activity - mark it inactive from Edit instead.">
-                    Delete
-                </button>
-            @endif
-        @endcan
+        @include('inventory._delete_button')
     </div>
 </div>
 

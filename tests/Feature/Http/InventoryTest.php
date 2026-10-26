@@ -265,6 +265,16 @@ it('hides the delete button from staff and shows it to a manager for an unstocke
         ->assertOk()->assertSee('Delete');
 });
 
+it('also shows the delete button on the adjust-stock screen', function () {
+    $manager = User::factory()->create(['username' => 'manager4', 'role' => 'manager']);
+
+    $this->actingAs($this->staff)->get(route('inventory.adjust.form', $this->item))
+        ->assertOk()->assertDontSee('Delete');
+
+    $this->actingAs($manager)->get(route('inventory.adjust.form', $this->item))
+        ->assertOk()->assertSee('Delete');
+});
+
 // ---------------------------------------------------------------------------
 // receiving
 // ---------------------------------------------------------------------------

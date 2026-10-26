@@ -119,6 +119,36 @@ it('breaks the day down by staff, payment method and medicine', function () {
         ->and($report['by_medicine']['Panadol 500mg'])->toBe(['qty' => 7, 'net' => '84.00']);
 });
 
+it('lists what was sold as one line per purchase, not one aggregated row', function () {
+    // Two people buying the same medicine at different times must stay two
+    // rows - an owner reading "qty 2" cannot tell that apart from one person
+    // buying two.
+    $this->sales->create(
+        lines: [new CartLine($this->panadol->uuid, 2, '12.00', $this->panadolBatch->uuid)],
+        staffMemberUuid: $this->ahmed->uuid,
+        deviceId: DEVICE,
+    );
+
+    $this->sales->create(
+        lines: [new CartLine($this->panadol->uuid, 5, '12.00', $this->panadolBatch->uuid)],
+        staffMemberUuid: $this->sara->uuid,
+        deviceId: DEVICE,
+    );
+
+    $report = $this->reports->dailySales($this->today);
+
+    expect($report['medicine_sales'])->toHaveCount(2);
+
+    $quantities = collect($report['medicine_sales'])->pluck('quantity')->sort()->values()->all();
+    expect($quantities)->toBe([2, 5]);
+
+    // Each line still carries the time its own sale happened at.
+    foreach ($report['medicine_sales'] as $line) {
+        expect($line['sale_time'])->not->toBeNull()
+            ->and($line['item_name'])->toBe('Panadol 500mg');
+    }
+});
+
 it('lists returns beside the takings instead of netting them off', function () {
     $sale = $this->sales->create(
         lines: [new CartLine($this->panadol->uuid, 4, '12.00', $this->panadolBatch->uuid)],

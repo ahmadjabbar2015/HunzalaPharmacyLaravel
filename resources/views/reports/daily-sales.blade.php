@@ -100,17 +100,23 @@
 <div class="card mb-3">
     <div class="card-header">What was sold</div>
     <div class="table-responsive">
+        {{--
+            One row per purchase, not one row per medicine: two people each
+            buying a box at different times must not collapse into a single
+            "qty 2" line - the owner wants to see who bought it, and when.
+        --}}
         <table class="table table-sm mb-0">
-            <thead><tr><th>Medicine</th><th class="text-end">Quantity</th><th class="text-end">Value</th></tr></thead>
+            <thead><tr><th>Time</th><th>Medicine</th><th class="text-end">Quantity</th><th class="text-end">Value</th></tr></thead>
             <tbody>
-                @forelse ($report['by_medicine'] as $name => $totals)
+                @forelse ($report['medicine_sales'] as $line)
                     <tr>
-                        <td>{{ $name }}</td>
-                        <td class="text-end qty">{{ $totals['qty'] }}</td>
-                        <td class="text-end money">{{ $totals['net'] }}</td>
+                        <td>{{ $line['sale_time']?->format('H:i') }}</td>
+                        <td>{{ $line['item_name'] }}</td>
+                        <td class="text-end qty">{{ $line['quantity'] }}</td>
+                        <td class="text-end money">{{ $line['net'] }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="3" class="text-secondary">Nothing sold.</td></tr>
+                    <tr><td colspan="4" class="text-secondary">Nothing sold.</td></tr>
                 @endforelse
             </tbody>
         </table>

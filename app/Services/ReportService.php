@@ -83,6 +83,7 @@ class ReportService
             'by_staff' => [],
             'by_payment' => [],
             'by_medicine' => [],
+            'medicine_sales' => [],
             'total_count' => 0,
             'total_subtotal' => Money::ZERO,
             'total_discount' => Money::ZERO,
@@ -90,6 +91,8 @@ class ReportService
             'return_count' => 0,
             'return_total' => Money::ZERO,
         ];
+
+        $salesByUuid = [];
 
         foreach ($sales as $sale) {
             $staffName = $sale->staffMember?->full_name ?? $sale->staff_member_uuid;
@@ -111,6 +114,7 @@ class ReportService
             ];
 
             $report['sales'][] = $row;
+            $salesByUuid[$sale->uuid] = $row;
             $report['total_count']++;
             $report['total_subtotal'] = Money::add($report['total_subtotal'], $row['subtotal']);
             $report['total_discount'] = Money::add($report['total_discount'], $row['discount']);
@@ -120,7 +124,8 @@ class ReportService
             $report['by_payment'] = $this->accumulate($report['by_payment'], $method, 'count', $row['net']);
         }
 
-        $report['by_medicine'] = $this->medicineBreakdown($sales->modelKeys());
+        [$report['by_medicine'], $report['medicine_sales']]
+            = $this->medicineBreakdownWithLines($sales->modelKeys(), $salesByUuid);
 
         // Returns recorded on the same date, as one aggregate. They are shown
         // beside the takings rather than netted off them: the owner needs to
@@ -475,6 +480,64 @@ class ReportService
 
     /**
      * Quantity and value sold per medicine, for a set of sales, in one query.
+     *
+     * @param  list<string>  $saleUuids
+     * @return array<string, array{qty: int, net: string}>
+     */
+    /**
+     * The same totals as medicineBreakdown(), plus one row per item LINE,
+     * each carrying the time of the sale it came from.
+     *
+     * The aggregate alone cannot answer "who bought this and when" - two
+     * people each buying one box reads identically to one person buying two.
+     * One join covers both shapes, so this costs nothing over medicineBreakdown()
+     * alone; used by dailySales() instead of that method so the per-line detail
+     * does not need a second query.
+     *
+     * @param  list<string>  $saleUuids
+     * @param  array<string, array<string, mixed>>  $salesByUuid  sale uuid => the row already built for $report['sales'], for its time and invoice number
+     * @return array{0: array<string, array{qty: int, net: string}>, 1: list<array<string, mixed>>}
+     */
+    private function medicineBreakdownWithLines(array $saleUuids, array $salesByUuid): array
+    {
+        if ($saleUuids === []) {
+            return [[], []];
+        }
+
+        $rows = DB::table('sale_items')
+            ->join('items', 'sale_items.item_uuid', '=', 'items.uuid')
+            ->whereIn('sale_items.sale_uuid', $saleUuids)
+            ->select(['sale_items.sale_uuid', 'items.item_name', 'sale_items.quantity', 'sale_items.amount'])
+            ->get();
+
+        $totals = [];
+        $lines = [];
+
+        foreach ($rows as $row) {
+            $totals[$row->item_name] ??= ['qty' => 0, 'net' => Money::ZERO];
+            $totals[$row->item_name]['qty'] += (int) $row->quantity;
+            $totals[$row->item_name]['net'] = Money::add($totals[$row->item_name]['net'], $row->amount);
+
+            $sale = $salesByUuid[$row->sale_uuid] ?? null;
+            $lines[] = [
+                'item_name' => $row->item_name,
+                'quantity' => (int) $row->quantity,
+                'net' => Money::format($row->amount),
+                'sale_time' => $sale['sale_time'] ?? null,
+                'invoice_number' => $sale['invoice_number'] ?? null,
+            ];
+        }
+
+        uasort($totals, fn ($a, $b) => Money::greaterThan($b['net'], $a['net']) ? 1 : -1);
+        usort($lines, fn ($a, $b) => $a['sale_time'] <=> $b['sale_time']);
+
+        return [$totals, $lines];
+    }
+
+    /**
+     * Medicine totals for a set of sales - biggest sellers first. Used where
+     * only the aggregate is wanted (session-summary); dailySales() uses
+     * medicineBreakdownWithLines() instead so it is not run twice.
      *
      * @param  list<string>  $saleUuids
      * @return array<string, array{qty: int, net: string}>

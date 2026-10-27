@@ -58,6 +58,7 @@ it('keeps a cashier out of every report', function (string $route) {
     fn () => route('reports.index'),
     fn () => route('reports.daily-sales'),
     fn () => route('reports.daily-sales.csv'),
+    fn () => route('reports.daily-sale-detail'),
     fn () => route('reports.sessions'),
     fn () => route('reports.inventory'),
     fn () => route('reports.inventory.csv'),
@@ -124,6 +125,48 @@ it('downloads the day as a CSV carrying the same figures', function () {
         ->and($csv)->toContain($this->sale->invoice_number)
         ->and($csv)->toContain('Ahmed Ali')
         ->and($csv)->toContain('TOTAL');
+});
+
+// ---------------------------------------------------------------------------
+// daily sale detail (print)
+// ---------------------------------------------------------------------------
+
+it('lists every invoice for today, itemised, by default', function () {
+    $this->actingAs($this->owner)->get(route('reports.daily-sale-detail'))
+        ->assertOk()
+        ->assertSee($this->sale->invoice_number)
+        ->assertSee('Panadol 500mg')
+        ->assertSee('PANADOL-500')
+        ->assertSee('Ahmed Ali')
+        ->assertSee('24.00');
+});
+
+it('respects a from/to range on the detail report', function () {
+    $yesterday = BusinessDate::for()->subDay()->toDateString();
+
+    $this->actingAs($this->owner)
+        ->get(route('reports.daily-sale-detail', ['from' => $yesterday, 'to' => $yesterday]))
+        ->assertOk()
+        ->assertDontSee($this->sale->invoice_number);
+});
+
+it('refuses a to date before from on the detail report', function () {
+    $this->actingAs($this->owner)
+        ->get(route('reports.daily-sale-detail', ['from' => $this->today, 'to' => '2000-01-01']))
+        ->assertSessionHasErrors('to');
+});
+
+it('shows the shop name and address on the detail report, matching the receipt', function () {
+    \App\Models\Setting::create([
+        'shop_name' => 'Heart & Family Clinic Pharmacy',
+        'shop_address' => 'Boston Colony Street#5 Qainchi Amar Sidhu',
+        'receipt_width' => '80mm',
+    ]);
+
+    $this->actingAs($this->owner)->get(route('reports.daily-sale-detail'))
+        ->assertOk()
+        ->assertSee('Heart & Family Clinic Pharmacy')
+        ->assertSee('Boston Colony Street#5 Qainchi Amar Sidhu');
 });
 
 // ---------------------------------------------------------------------------

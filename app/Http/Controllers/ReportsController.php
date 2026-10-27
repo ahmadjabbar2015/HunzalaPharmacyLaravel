@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DrawerSession;
+use App\Models\Setting;
 use App\Services\ReportService;
 use App\Support\BusinessDate;
 use App\Support\Csv;
@@ -42,6 +43,22 @@ class ReportsController extends Controller
     {
         return view('reports.daily-sales', [
             'report' => $this->reports->dailySales($this->dateFrom($request)),
+        ]);
+    }
+
+    /**
+     * Invoice by invoice, itemised - the print-styled report in the shape
+     * the shop's previous software produced it in.
+     */
+    public function dailySaleDetail(Request $request): View
+    {
+        [$from, $to] = $this->printRangeFrom($request);
+
+        return view('reports.daily-sale-detail', [
+            'report' => $this->reports->dailySaleDetail($from, $to),
+            // The shop's name and address on the printed sheet - the same
+            // settings row the receipt reads, so the two never disagree.
+            'settings' => Setting::query()->first(),
         ]);
     }
 
@@ -302,5 +319,28 @@ class ReportsController extends Controller
             : $today->toDateString();
 
         return [$from, $to];
+    }
+
+    /**
+     * A date range for the print detail report, defaulting to today-to-today
+     * rather than rangeFrom()'s month-to-date - a print report like this one
+     * is almost always run for a single day, the way the old paper version
+     * was.
+     *
+     * @return array{string, string}
+     */
+    private function printRangeFrom(Request $request): array
+    {
+        $validated = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+        ]);
+
+        $today = BusinessDate::today();
+
+        return [
+            isset($validated['from']) ? BusinessDate::for($validated['from'])->toDateString() : $today,
+            isset($validated['to']) ? BusinessDate::for($validated['to'])->toDateString() : $today,
+        ];
     }
 }

@@ -149,6 +149,79 @@ class ReportService
     }
 
     // -----------------------------------------------------------------------
+    // Daily sale detail (print)
+    // -----------------------------------------------------------------------
+
+    /**
+     * Every sale over a date range, itemised - invoice by invoice, each with
+     * its own item lines and its own total, the way a paper ledger records a
+     * day's trade. Where dailySales() answers "how did the day add up",
+     * this answers "what happened, sale by sale" - the shape the shop's
+     * previous software printed, and the one an inspector or an accountant
+     * sometimes still asks for by name.
+     *
+     * Eager-loaded rather than query-budgeted like dailySales(): this is a
+     * print report run for one day (or a short range) at a time, not a
+     * dashboard figure computed on every page load, so a handful of queries
+     * bounded by relation count (not by row count) is the right trade here.
+     *
+     * @param  string  $from  a business date, Y-m-d
+     * @param  string  $to  a business date, Y-m-d, inclusive
+     * @return array<string, mixed>
+     */
+    public function dailySaleDetail(string $from, string $to): array
+    {
+        $sales = Sale::query()
+            ->with(['staffMember', 'customer', 'lines.item', 'lines.batch'])
+            ->whereDate('sale_date', '>=', $from)
+            ->whereDate('sale_date', '<=', $to)
+            ->orderBy('sale_time')
+            ->get();
+
+        $report = [
+            'from' => $from,
+            'to' => $to,
+            'sales' => [],
+            'total_count' => 0,
+            'total_net' => Money::ZERO,
+        ];
+
+        foreach ($sales as $sale) {
+            $lines = $sale->lines->map(fn ($line) => [
+                'item_code' => $line->item?->item_code ?? '—',
+                'item_name' => $line->item?->item_name ?? '—',
+                'rate' => Money::format($line->rate),
+                'quantity' => $line->quantity,
+                'amount' => Money::format($line->amount),
+                'batch_number' => $line->batch?->batch_number,
+                'expiry_date' => $line->batch?->expiry_date,
+            ])->all();
+
+            $report['sales'][] = [
+                'uuid' => $sale->uuid,
+                'invoice_number' => $sale->invoice_number,
+                'sale_time' => $sale->sale_time,
+                'staff_name' => $sale->staffMember?->full_name ?? $sale->staff_member_uuid,
+                // An em dash, not an empty cell: a walk-in with no customer
+                // record is the normal case, not missing data.
+                'customer_name' => $sale->customer?->full_name ?? '—',
+                'payment_method' => $sale->payment_method ?: 'cash',
+                'device_id' => $sale->origin_device_id,
+                'discount_amount' => Money::format($sale->discount_amount),
+                'subtotal_amount' => Money::format($sale->subtotal_amount),
+                'net_amount' => Money::format($sale->net_amount),
+                'is_returned' => (bool) $sale->is_returned,
+                'lines' => $lines,
+            ];
+
+            $report['total_count']++;
+            $report['total_net'] = Money::add($report['total_net'], Money::format($sale->net_amount));
+        }
+
+        return $report;
+    }
+
+    // -----------------------------------------------------------------------
     // Session summary
     // -----------------------------------------------------------------------
 

@@ -194,6 +194,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('daily-sales', [ReportsController::class, 'dailySales'])->name('reports.daily-sales');
         Route::get('daily-sales.csv', [ReportsController::class, 'dailySalesCsv'])->name('reports.daily-sales.csv');
+        Route::get('daily-sale-detail', [ReportsController::class, 'dailySaleDetail'])->name('reports.daily-sale-detail');
 
         Route::get('sessions', [ReportsController::class, 'sessions'])->name('reports.sessions');
         Route::get('sessions/{session}', [ReportsController::class, 'sessionSummary'])->name('reports.session');

@@ -29,6 +29,21 @@
     <div class="col-12 col-md-6 col-xl-3">
         <div class="card h-100">
             <div class="card-body">
+                <h2 class="h6">Daily sale detail</h2>
+                <p class="small text-secondary">
+                    Every invoice, itemised, one block per sale with its own
+                    total - the print sheet, in the old system's shape.
+                </p>
+                <a href="{{ route('reports.daily-sale-detail') }}" class="btn btn-sm btn-primary">
+                    Today ({{ $today }})
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-3">
+        <div class="card h-100">
+            <div class="card-body">
                 <h2 class="h6">Drawer sessions</h2>
                 <p class="small text-secondary">
                     Every evening's float, takings, count and variance. The place

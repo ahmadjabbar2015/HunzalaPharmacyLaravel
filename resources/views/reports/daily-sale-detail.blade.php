@@ -106,6 +106,21 @@
                 <div>{{ number_format($report['total_count']) }} {{ Str::plural('invoice', $report['total_count']) }}</div>
                 <div class="money">{{ $report['total_net'] }}</div>
             </div>
+            @if ($report['return_count'] > 0)
+                {{--
+                    Shown beside the gross total, never netted off it - a
+                    sale's own figures do not change once it is returned
+                    against (see ReportService::dailySaleDetail).
+                --}}
+                <div class="d-flex justify-content-between text-warning-emphasis small">
+                    <div>{{ number_format($report['return_count']) }} {{ Str::plural('return', $report['return_count']) }} given back</div>
+                    <div class="money">{{ $report['return_total'] }}</div>
+                </div>
+                <div class="d-flex justify-content-between fw-bold">
+                    <div>Net takings</div>
+                    <div class="money">{{ $report['net_takings'] }}</div>
+                </div>
+            @endif
         @endif
     </div>
 </div>

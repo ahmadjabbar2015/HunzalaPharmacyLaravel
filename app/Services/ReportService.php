@@ -184,6 +184,9 @@ class ReportService
             'sales' => [],
             'total_count' => 0,
             'total_net' => Money::ZERO,
+            'return_count' => 0,
+            'return_total' => Money::ZERO,
+            'net_takings' => Money::ZERO,
         ];
 
         foreach ($sales as $sale) {
@@ -217,6 +220,24 @@ class ReportService
             $report['total_count']++;
             $report['total_net'] = Money::add($report['total_net'], Money::format($sale->net_amount));
         }
+
+        // Returns over the same range, shown beside the gross total rather
+        // than netted off it - same choice as dailySales(), for the same
+        // reason: a sale's own figures never change once it is returned
+        // against, so this is the only place that total says anything went
+        // back out.
+        $returns = SaleReturn::query()
+            ->whereDate('return_date', '>=', $from)
+            ->whereDate('return_date', '<=', $to)
+            ->selectRaw('COUNT(*) as row_count, COALESCE(SUM(total_amount), 0) as total')
+            ->first();
+
+        $report['return_count'] = (int) ($returns->row_count ?? 0);
+        $report['return_total'] = Money::format($returns->total ?? 0);
+
+        // What actually stayed in the till - see dailySales() for why this
+        // matters at any real volume.
+        $report['net_takings'] = Money::sub($report['total_net'], $report['return_total']);
 
         return $report;
     }

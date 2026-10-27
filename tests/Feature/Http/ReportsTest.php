@@ -14,6 +14,8 @@ use App\Models\Item;
 use App\Models\ItemBatch;
 use App\Models\User;
 use App\Services\CartLine;
+use App\Services\ReturnLine;
+use App\Services\ReturnService;
 use App\Services\SaleService;
 use App\Services\SessionService;
 use App\Services\StockService;
@@ -154,6 +156,31 @@ it('refuses a to date before from on the detail report', function () {
     $this->actingAs($this->owner)
         ->get(route('reports.daily-sale-detail', ['from' => $this->today, 'to' => '2000-01-01']))
         ->assertSessionHasErrors('to');
+});
+
+it('shows what was returned and the net takings on the detail report', function () {
+    app(ReturnService::class)->create(
+        originalSaleUuid: $this->sale->uuid,
+        lines: [new ReturnLine($this->sale->lines()->first()->uuid, 1)],
+        staffMemberUuid: $this->cashier->uuid,
+        deviceId: DEVICE,
+    );
+
+    // Sale was 24.00 net; one of two units returned at 12.00.
+    $this->actingAs($this->owner)->get(route('reports.daily-sale-detail'))
+        ->assertOk()
+        ->assertSee('24.00')
+        ->assertSee('1 return')
+        ->assertSee('12.00')
+        ->assertSee('Net takings')
+        ->assertSee('12.00');
+});
+
+it('says nothing about returns on the detail report when there are none', function () {
+    $this->actingAs($this->owner)->get(route('reports.daily-sale-detail'))
+        ->assertOk()
+        ->assertDontSee('Net takings')
+        ->assertDontSee('given back');
 });
 
 it('shows the shop name and address on the detail report, matching the receipt', function () {

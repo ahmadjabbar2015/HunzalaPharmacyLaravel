@@ -4,9 +4,9 @@
 
 @section('content')
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
     <h1 class="h4 mb-0">Sales</h1>
-    <span class="text-end">
+    <span class="text-sm-end">
         <span class="text-secondary">
             {{ number_format($sales->total()) }} {{ Str::plural('sale', $sales->total()) }}
             &middot; <span class="money">{{ $filteredTotal }}</span> sold
@@ -51,7 +51,7 @@
                 <input type="date" class="form-control form-control-sm" id="to" name="to"
                        value="{{ $filters['to'] ?? '' }}">
             </div>
-            <div class="col-6 col-md-2">
+            <div class="col-12 col-md-2">
                 <label for="payment_method" class="form-label small mb-1">Paid by</label>
                 <select class="form-select form-select-sm" id="payment_method" name="payment_method">
                     <option value="">Any</option>
@@ -62,7 +62,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-6 col-md-2">
+            <div class="col-12 col-md-2">
                 <button type="submit" class="btn btn-sm btn-primary w-100">Filter</button>
             </div>
         </form>
@@ -70,7 +70,13 @@
 </div>
 
 <div class="card">
-    <div class="table-responsive">
+    {{--
+        Seven columns in a table-responsive strip is a sideways scroll on a
+        phone - readable at a desk, not standing at the counter checking the
+        day's trade on a mobile browser. Below md this becomes a stacked card
+        per sale instead; the table (same data, denser) takes over from md up.
+    --}}
+    <div class="table-responsive d-none d-md-block">
         <table class="table table-hover align-middle mb-0">
             <thead>
                 <tr>
@@ -118,6 +124,42 @@
                 @endforelse
             </tbody>
         </table>
+    </div>
+
+    <div class="d-md-none">
+        @forelse ($sales as $sale)
+            <a href="{{ route('sales.show', $sale) }}"
+               class="d-block text-decoration-none text-body p-3 border-bottom sale-row">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <div>
+                        <div class="fw-semibold">
+                            {{ $sale->invoice_number }}
+                            @if ($sale->is_returned)
+                                <span class="badge text-bg-warning">returned</span>
+                            @endif
+                        </div>
+                        <div class="small text-secondary">
+                            {{ \App\Support\BusinessDate::toLocal($sale->sale_time)->format('j M Y, g:ia') }}
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <div class="money fw-semibold">{{ $sale->net_amount }}</div>
+                        @unless (\App\Support\Money::isZero($sale->discount_amount))
+                            <div class="money small text-secondary">
+                                −{{ $sale->discount_amount }} disc
+                            </div>
+                        @endunless
+                    </div>
+                </div>
+                <div class="small text-secondary mt-1">
+                    {{ $sale->staffMember?->full_name ?? '—' }}
+                    &middot; {{ $sale->customer?->primary_contact_name ?? $sale->customer?->phone_number ?? '—' }}
+                    &middot; {{ ucfirst($sale->payment_method ?? '—') }}
+                </div>
+            </a>
+        @empty
+            <div class="text-secondary py-4 text-center">No sales match that.</div>
+        @endforelse
     </div>
 </div>
 

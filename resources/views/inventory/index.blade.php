@@ -88,15 +88,8 @@
                             <a href="{{ route('inventory.show', $item) }}" class="fw-semibold">
                                 {{ $item->item_name }}
                             </a>
-                            {{--
-                                The item code is an internal number with no
-                                meaning to whoever is reading this list at a
-                                glance; it stays one click away on the item's
-                                own page. The pack price is what they actually
-                                want to see here.
-                            --}}
                             <span class="small text-secondary d-block">
-                                {{ $item->packPrice() }} / pack
+                                {{ $item->item_code }}
                                 @if ($item->is_narcotic)
                                     &middot; <span class="text-danger">controlled</span>
                                 @endif

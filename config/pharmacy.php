@@ -54,7 +54,10 @@ return [
     'defaults' => [
         'discount_pin_threshold' => 100,
         'low_stock_threshold' => 10,
-        'expiry_alert_days' => 30,
+        // Half a year's notice, not one month: a slow-moving medicine needs
+        // time to be pushed, discounted or returned to the supplier before
+        // it expires - 30 days was too late to act on by the time it showed.
+        'expiry_alert_days' => 180,
         'receipt_width' => '80mm',
     ],
 ];

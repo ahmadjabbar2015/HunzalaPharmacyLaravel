@@ -356,7 +356,7 @@ class ReportService
      */
     public function inventory(): array
     {
-        $alertDays = Setting::current()?->expiry_alert_days ?? 30;
+        $alertDays = Setting::current()?->expiry_alert_days ?? 180;
         $today = BusinessDate::for();
         $cutoff = $today->addDays($alertDays);
 

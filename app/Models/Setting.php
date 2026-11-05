@@ -12,7 +12,7 @@ class Setting extends BaseModel
     protected $attributes = [
         'discount_pin_threshold' => 100,
         'low_stock_threshold_default' => 10,
-        'expiry_alert_days' => 30,
+        'expiry_alert_days' => 180,
         'sync_interval_seconds' => 30,
         'receipt_width' => '80mm',
     ];

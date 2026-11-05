@@ -96,7 +96,6 @@ class InventoryController extends Controller
             'batches' => $batches,
             'batchQuantities' => $batchQuantities,
             'sellableBatch' => $this->items->sellableBatch($item->uuid),
-            'canDelete' => ! $this->stock->hasMovements($item->uuid),
 
             /*
              * The ledger for this item, most recent first. This is the screen
@@ -175,18 +174,15 @@ class InventoryController extends Controller
     }
 
     /**
-     * Remove an item that was never actually stocked - a duplicate entry or a
-     * typo caught before anything was received against it. Anything with
-     * recorded stock activity is refused (ItemService::delete); mark it
-     * inactive instead so its history stays readable.
+     * Remove an item - gated by the delete-item permission, not by what it
+     * has sold (routes/web.php, AuthServiceProvider). Its batches go with it
+     * (ItemService::delete); old receipts and reports naming it will show a
+     * blank item name from here on, which is what deleting rather than
+     * deactivating it means.
      */
     public function destroy(Item $item): RedirectResponse
     {
-        try {
-            $this->items->delete($item);
-        } catch (ItemException $e) {
-            return back()->with('error', $e->getMessage());
-        }
+        $this->items->delete($item);
 
         return redirect()->route('inventory.index')->with('status', "{$item->item_name} deleted.");
     }
@@ -270,7 +266,6 @@ class InventoryController extends Controller
             'derivedQty' => $this->stock->quantityFor($item->uuid),
             'batches' => $batches,
             'batchQuantities' => $this->stock->batchQuantitiesFor($batches->pluck('uuid')->all()),
-            'canDelete' => ! $this->stock->hasMovements($item->uuid),
         ]);
     }
 

@@ -184,26 +184,26 @@ class ItemService
     }
 
     /**
-     * Remove an item that was never actually stocked.
+     * Remove an item, gated by the delete-item permission rather than by
+     * what it has sold (AuthServiceProvider / routes/web.php).
      *
-     * Soft delete (RULE 4), and only when nothing in the ledger names it: a
-     * receipt, a report, or the ledger itself reads an item through its
-     * relation, and the global not-deleted scope would make that relation
-     * resolve to null the moment the item disappears - turning old paperwork
-     * unreadable. An item that was created by mistake and never received
-     * against has no such row anywhere, so deleting it loses nothing.
+     * Soft delete (RULE 4). A receipt, a report, or the ledger itself reads
+     * an item through its relation, and the global not-deleted scope makes
+     * that relation resolve to null the moment the item disappears - so a
+     * deleted item's old paperwork shows a blank name where it used to say
+     * what was sold, deliberately accepted by whoever has this permission.
      *
-     * @throws ItemException if the item has any stock movement
+     * Its batches are soft-deleted along with it: a batch cannot be received
+     * against or sold from once its item is gone, and an orphaned one left
+     * behind would be invisible stock nobody can act on (and the exact shape
+     * of the production incident on 2026-11-05 - see ItemService's
+     * batchesWithStock filtering).
      */
     public function delete(Item $item): void
     {
-        if ($this->stock->hasMovements($item->uuid)) {
-            throw new ItemException(
-                "{$item->item_name} has recorded stock activity and cannot be deleted - mark it inactive instead"
-            );
-        }
-
         $item->softDelete();
+
+        $item->batches()->get()->each->softDelete();
 
         Log::info('item deleted', ['code' => $item->item_code]);
     }

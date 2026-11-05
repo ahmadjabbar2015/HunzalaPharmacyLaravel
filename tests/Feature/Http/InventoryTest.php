@@ -236,16 +236,25 @@ it('deletes an item that was never stocked', function () {
     expect(Item::find($this->item->uuid))->toBeNull();
 });
 
-it('refuses to delete an item with recorded stock activity', function () {
+it('deletes an item with recorded stock activity too, along with its batches', function () {
+    // Gated by the delete-item permission, not by what the item has sold -
+    // whoever holds that permission is trusted to accept that old receipts
+    // and reports naming it will show a blank item name from here on.
     $manager = User::factory()->create(['username' => 'manager2', 'role' => 'manager']);
     $batch = ItemBatch::factory()->for($this->item, 'item')->create(['batch_number' => 'B-3301']);
     $this->stock->receive(itemUuid: $this->item->uuid, batchUuid: $batch->uuid, quantity: 10, deviceId: DEVICE);
 
     $this->actingAs($manager)->delete(route('inventory.destroy', $this->item))
-        ->assertRedirect();
+        ->assertRedirect(route('inventory.index'));
 
-    // Still there, and still the same row - the ledger still names it.
-    expect(Item::find($this->item->uuid))->not->toBeNull();
+    expect(Item::find($this->item->uuid))->toBeNull()
+        // Its batch goes with it - a dangling one with "stock" nobody can
+        // receive against or sell from is exactly the shape of the
+        // production incident this is meant to avoid repeating.
+        ->and(ItemBatch::find($batch->uuid))->toBeNull();
+
+    // The ledger row itself is untouched (RULE 4 - history is never erased).
+    expect(StockTransaction::where('item_uuid', $this->item->uuid)->count())->toBe(1);
 });
 
 it('refuses plain staff the delete button entirely', function () {
@@ -255,8 +264,10 @@ it('refuses plain staff the delete button entirely', function () {
     expect(Item::find($this->item->uuid))->not->toBeNull();
 });
 
-it('hides the delete button from staff and shows it to a manager for an unstocked item', function () {
+it('hides the delete button from staff and shows it to a manager, stocked or not', function () {
     $manager = User::factory()->create(['username' => 'manager3', 'role' => 'manager']);
+    $batch = ItemBatch::factory()->for($this->item, 'item')->create();
+    $this->stock->receive(itemUuid: $this->item->uuid, batchUuid: $batch->uuid, quantity: 10, deviceId: DEVICE);
 
     $this->actingAs($this->staff)->get(route('inventory.show', $this->item))
         ->assertOk()->assertDontSee('Delete');

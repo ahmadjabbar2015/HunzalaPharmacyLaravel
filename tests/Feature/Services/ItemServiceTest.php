@@ -84,23 +84,29 @@ it('deletes an item that has never been received against', function () {
     expect(Item::find($this->item->uuid))->toBeNull();
 });
 
-it('refuses to delete an item with any stock movement', function () {
-    receiveBatch($this->item->uuid, 'B-1', '2027-01-01', 10);
+it('deletes an item with a stock movement too, taking its batch with it', function () {
+    // Gated by the delete-item permission (AuthServiceProvider), not by
+    // what the item has sold - the ledger row itself survives (RULE 4), but
+    // the item and its batch are gone, deliberately accepted by whoever has
+    // that permission.
+    $batch = receiveBatch($this->item->uuid, 'B-1', '2027-01-01', 10);
 
-    expect(fn () => $this->items->delete($this->item))->toThrow(ItemException::class);
+    $this->items->delete($this->item);
 
-    // Refused, not half-done: the item and its batch are both still there.
-    expect(Item::find($this->item->uuid))->not->toBeNull();
+    expect(Item::find($this->item->uuid))->toBeNull()
+        ->and(ItemBatch::find($batch->uuid))->toBeNull();
 });
 
-it('refuses to delete an item with only an adjustment recorded', function () {
-    // Adjustments have no batch, so a check that only looked at batches would
-    // miss this and delete an item the ledger still names.
+it('deletes an item with only an adjustment recorded', function () {
+    // Adjustments have no batch, so this exercises the item-level delete
+    // alone rather than the batch cascade above.
     $this->stock->adjust(
         itemUuid: $this->item->uuid, qtyChange: 5, reason: 'found extra on the shelf', deviceId: DEVICE,
     );
 
-    expect(fn () => $this->items->delete($this->item))->toThrow(ItemException::class);
+    $this->items->delete($this->item);
+
+    expect(Item::find($this->item->uuid))->toBeNull();
 });
 
 // ---------------------------------------------------------------------------

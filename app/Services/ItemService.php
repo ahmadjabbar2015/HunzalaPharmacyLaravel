@@ -508,9 +508,17 @@ class ItemService
             ->keyBy('uuid');
 
         return $withStock
+            // A batch outlives a deleted item - ItemService::delete() refuses
+            // anything with stock, but an item can still be removed by hand
+            // (e.g. tidying up test data), and its batches are not cascaded.
+            // Item::query() above already excludes a deleted item, so such a
+            // batch's lookup misses here; skipped rather than passed through
+            // with a null item; the alerts screen would otherwise crash
+            // building a link to it.
+            ->filter(fn (ItemBatch $batch) => isset($items[$batch->item_uuid]))
             ->map(fn (ItemBatch $batch) => [
                 'batch' => $batch,
-                'item' => $items[$batch->item_uuid] ?? null,
+                'item' => $items[$batch->item_uuid],
             ])
             ->values();
     }

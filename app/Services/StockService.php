@@ -436,10 +436,18 @@ class StockService
      */
     public function negativeStockItems(): array
     {
+        // Joined to items and filtered to the not-deleted ones: a deleted
+        // item's own movements are still in the ledger (RULE 4 - history is
+        // never erased), and without this an item removed by hand after
+        // trading (ItemService::delete() blocks it, but a direct cleanup does
+        // not) would surface here with nothing for the alerts screen to link
+        // to.
         return StockTransaction::query()
-            ->groupBy('item_uuid')
-            ->havingRaw('COALESCE(SUM(qty_change), 0) < 0')
-            ->selectRaw('item_uuid, COALESCE(SUM(qty_change), 0) as qty')
+            ->join('items', 'items.uuid', '=', 'stock_transactions.item_uuid')
+            ->where('items.is_deleted', false)
+            ->groupBy('stock_transactions.item_uuid')
+            ->havingRaw('COALESCE(SUM(stock_transactions.qty_change), 0) < 0')
+            ->selectRaw('stock_transactions.item_uuid, COALESCE(SUM(stock_transactions.qty_change), 0) as qty')
             ->get()
             ->map(fn ($row) => ['item_uuid' => $row->item_uuid, 'qty' => (int) $row->qty])
             ->all();

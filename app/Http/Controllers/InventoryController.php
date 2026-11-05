@@ -321,10 +321,14 @@ class InventoryController extends Controller
             'expired' => $this->items->expiredBatches(),
             'expiryDays' => $expiryDays,
 
-            'negative' => $negative->map(fn (array $row) => [
-                ...$row,
-                'item' => Item::find($row['item_uuid']),
-            ]),
+            // negativeStockItems() already excludes a deleted item's own
+            // rows; filtered again here in case Item::find() still comes
+            // back null for some other reason - a dropped row is a missed
+            // alert, a null one is a 500 building the link to it.
+            'negative' => $negative
+                ->map(fn (array $row) => [...$row, 'item' => Item::find($row['item_uuid'])])
+                ->filter(fn (array $row) => $row['item'] !== null)
+                ->values(),
         ]);
     }
 

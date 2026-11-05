@@ -485,6 +485,36 @@ it('says so plainly when there is nothing to deal with', function () {
         ->assertSee('Nothing expiring soon');
 });
 
+it('skips an expiring batch and a negative balance left behind by a deleted item', function () {
+    // ItemService::delete() refuses anything with stock history, but a
+    // deleted item's own batches and ledger rows are not cascaded away - a
+    // direct cleanup (e.g. removing seeded sample data) can still leave one
+    // behind. The alerts screen must skip it, not 500 trying to link to a
+    // null item (production incident, 2026-11-05: this exact shape, exposed
+    // when the expiry window widened from 30 days to 6 months and an old
+    // batch that was always outside the old window fell inside the new one).
+    $today = BusinessDate::for();
+
+    $gone = Item::factory()->create(['item_code' => 'DELETED-SOON', 'item_name' => 'Deleted But Expiring']);
+    $goneBatch = ItemBatch::factory()->for($gone, 'item')->create([
+        'batch_number' => 'DEL-B', 'expiry_date' => $today->addDays(10)->toDateString(),
+    ]);
+    $this->stock->receive(itemUuid: $gone->uuid, batchUuid: $goneBatch->uuid, quantity: 20, deviceId: DEVICE);
+
+    $oversold = Item::factory()->create(['item_code' => 'DELETED-NEG', 'item_name' => 'Deleted And Oversold']);
+    $oversoldBatch = ItemBatch::factory()->for($oversold, 'item')->create();
+    $this->stock->receive(itemUuid: $oversold->uuid, batchUuid: $oversoldBatch->uuid, quantity: 2, deviceId: DEVICE);
+    $this->stock->sell(itemUuid: $oversold->uuid, batchUuid: $oversoldBatch->uuid, quantity: 5, deviceId: DEVICE);
+
+    $gone->softDelete();
+    $oversold->softDelete();
+
+    $this->actingAs($this->staff)->get(route('inventory.alerts'))
+        ->assertOk()
+        ->assertDontSee('Deleted But Expiring')
+        ->assertDontSee('Deleted And Oversold');
+});
+
 it('flags an item that is tracked but holds nothing', function () {
     // 0 against a reorder level of 10 is exactly what the alert is for: it is
     // out of stock AND being tracked, which is the case that loses a sale.

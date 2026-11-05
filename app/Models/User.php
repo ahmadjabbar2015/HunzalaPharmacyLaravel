@@ -26,6 +26,7 @@ class User extends BaseModel implements Authenticatable, AuthorizableContract
         'role' => 'staff',
         'is_active' => true,
         'pin_failed_attempts' => 0,
+        'can_delete_inventory' => false,
     ];
 
     protected function modelCasts(): array
@@ -34,6 +35,7 @@ class User extends BaseModel implements Authenticatable, AuthorizableContract
             'is_active' => 'boolean',
             'pin_failed_attempts' => 'integer',
             'pin_locked_until' => 'datetime',
+            'can_delete_inventory' => 'boolean',
         ];
     }
 

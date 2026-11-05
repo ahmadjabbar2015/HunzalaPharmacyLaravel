@@ -265,6 +265,18 @@ it('hides the delete button from staff and shows it to a manager for an unstocke
         ->assertOk()->assertSee('Delete');
 });
 
+it('lets a named staff member delete, and actually delete, once granted individually', function () {
+    $named = User::factory()->create(['username' => 'trusted', 'can_delete_inventory' => true]);
+
+    $this->actingAs($named)->get(route('inventory.show', $this->item))
+        ->assertOk()->assertSee('Delete');
+
+    $this->actingAs($named)->delete(route('inventory.destroy', $this->item))
+        ->assertRedirect(route('inventory.index'));
+
+    expect(Item::find($this->item->uuid))->toBeNull();
+});
+
 it('also shows the delete button on the adjust-stock screen', function () {
     $manager = User::factory()->create(['username' => 'manager4', 'role' => 'manager']);
 

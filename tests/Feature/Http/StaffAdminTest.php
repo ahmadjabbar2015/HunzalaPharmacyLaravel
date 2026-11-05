@@ -100,6 +100,29 @@ it('edits an account', function () {
         ->and($staff->fresh()->role)->toBe('manager');
 });
 
+it('grants a staff member delete-item access individually, off by default', function () {
+    $staff = User::factory()->create(['username' => 'ahmed', 'full_name' => 'Ahmed']);
+
+    expect($staff->can_delete_inventory)->toBeFalse();
+
+    $this->actingAs($this->owner)->put(route('staff.update', $staff), [
+        'full_name' => 'Ahmed',
+        'role' => 'staff',
+        'can_delete_inventory' => '1',
+    ])->assertRedirect(route('staff.index'));
+
+    expect($staff->fresh()->can_delete_inventory)->toBeTrue();
+
+    // An unticked checkbox sends nothing - the edit must still be able to
+    // take it away again, not just grant it.
+    $this->actingAs($this->owner)->put(route('staff.update', $staff), [
+        'full_name' => 'Ahmed',
+        'role' => 'staff',
+    ])->assertRedirect(route('staff.index'));
+
+    expect($staff->fresh()->can_delete_inventory)->toBeFalse();
+});
+
 it('deactivates an account without deleting it', function () {
     $staff = User::factory()->create(['username' => 'ahmed']);
 

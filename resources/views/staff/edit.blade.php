@@ -47,6 +47,22 @@
                                 removes the ability to authorise discounts and close the drawer.
                             </div>
                         </div>
+
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="1"
+                                       id="can_delete_inventory" name="can_delete_inventory"
+                                       @checked(old('can_delete_inventory', $staff->can_delete_inventory))>
+                                <label class="form-check-label" for="can_delete_inventory">
+                                    Can delete inventory items
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                Off by default, even for staff you trust with everything else.
+                                A manager or owner already has this through their role — this is
+                                only for naming one staff member without promoting them.
+                            </div>
+                        </div>
                     </div>
 
                     <div class="mt-4">

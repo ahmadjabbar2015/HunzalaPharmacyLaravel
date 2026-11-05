@@ -56,9 +56,12 @@ class AuthServiceProvider extends ServiceProvider
         /*
          * Deleting an item is not staff-level like the rest of inventory: it is
          * the one inventory action ItemService cannot undo by re-editing, so it
-         * gets the same bar as closing the drawer.
+         * gets the same bar as closing the drawer - manager/owner by default.
+         * An owner may still name one trusted staff member for it individually
+         * (users.can_delete_inventory, set from Staff > Edit) without handing
+         * them the rest of what a manager role carries.
          */
-        Gate::define('delete-item', fn (User $user) => $user->isManagerOrOwner());
+        Gate::define('delete-item', fn (User $user) => $user->isManagerOrOwner() || $user->can_delete_inventory);
 
         // Opening the drawer is staff-level - whoever arrives first does it.
         Gate::define('open-drawer', fn (User $user) => true);

@@ -368,6 +368,7 @@ class ReportService
         $batches = ItemBatch::query()
             ->whereIn('item_uuid', $items->modelKeys())
             ->orderBy('expiry_date')
+            ->orderBy('received_date')
             ->get();
 
         // Two aggregate queries for the whole report, however many items and

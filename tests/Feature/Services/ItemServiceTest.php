@@ -294,6 +294,26 @@ it('ignores batch receipt order when picking by expiry', function () {
     expect($this->items->sellableBatch($this->item->uuid)->uuid)->toBe($early->uuid);
 });
 
+it('breaks a tied expiry by received date, oldest delivery first', function () {
+    // The shape of the problem this exists for: the same manufacturer lot,
+    // still being distributed, delivered again a month later at a new
+    // price - batch_number has to differ (uq_item_batch), but nothing
+    // requires the expiry printed on the box to. Without the tiebreaker the
+    // two are unordered, and the newly-priced delivery could get sold
+    // before the one still priced for what it actually cost.
+    $this->travelTo('2026-09-01');
+    $first = receiveBatch($this->item->uuid, 'LOT-9F3-A', '2027-06-01', 5);
+
+    $this->travelTo('2026-10-01');
+    $second = receiveBatch($this->item->uuid, 'LOT-9F3-B', '2027-06-01', 5);
+
+    expect($this->items->sellableBatch($this->item->uuid)->uuid)->toBe($first->uuid);
+
+    $this->stock->sell(itemUuid: $this->item->uuid, batchUuid: $first->uuid, quantity: 5, deviceId: DEVICE);
+
+    expect($this->items->sellableBatch($this->item->uuid)->uuid)->toBe($second->uuid);
+});
+
 it('returns nothing sellable for an item with no batches', function () {
     $bare = $this->items->create(itemCode: 'BARE', itemName: 'No batches', deviceId: DEVICE);
 

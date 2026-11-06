@@ -258,7 +258,18 @@ class ItemService
             // Two batches sharing a number cannot be told apart on a shelf or
             // during a recall. Uniqueness is per item: manufacturers reuse
             // batch numbers across different products.
-            throw new ItemException("batch '{$batchNumber}' already exists for this item");
+            //
+            // A manufacturer's own lot number can legitimately turn up twice -
+            // the same lot, still being distributed, delivered again later at
+            // a new cost - so this is not always a mis-entry. The fix is a
+            // distinguishing suffix (below), not a second attempt at the same
+            // number: sellableBatch() breaks an expiry tie by received_date,
+            // so the earlier delivery still sells first either way.
+            throw new ItemException(
+                "batch '{$batchNumber}' already exists for this item - if this is the same lot "
+                ."delivered again at a new price, give it a distinguishing number instead, "
+                ."such as '{$batchNumber}-2'"
+            );
         }
 
         /*
@@ -408,6 +419,14 @@ class ItemService
         $batches = ItemBatch::query()
             ->where('item_uuid', $itemUuid)
             ->orderBy('expiry_date')
+            // Tiebreaker for two batches sharing an expiry date - which
+            // happens on purpose when the same delivery arrives again at a
+            // new price and the manufacturer's lot and expiry have not
+            // changed (batch_number still has to differ - uq_item_batch -
+            // but nothing requires the expiry to). Without this the two are
+            // unordered, and the one priced for a now-stale delivery could
+            // outlive the one that should sell first.
+            ->orderBy('received_date')
             ->get();
 
         if ($batches->isEmpty()) {
@@ -510,6 +529,7 @@ class ItemService
         $batches = ItemBatch::query()
             ->tap($filter)
             ->orderBy('expiry_date')
+            ->orderBy('received_date')
             ->get();
 
         if ($batches->isEmpty()) {

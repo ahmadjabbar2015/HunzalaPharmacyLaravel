@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\ItemException;
 use App\Models\Item;
+use App\Models\ItemBatch;
 use App\Models\Setting;
 use App\Models\StockTransaction;
 use App\Services\ItemService;
@@ -264,6 +265,34 @@ class InventoryController extends Controller
 
         return redirect()->route('inventory.show', $item)
             ->with('status', "{$item->describePieces($pieces)} received into batch {$validated['batch_number']}.");
+    }
+
+    /**
+     * Correct a batch's own price after it was already received - see
+     * ItemService::setBatchPrice(). The item in the route is not otherwise
+     * used; it keeps the URL readable and the batch unambiguous without a
+     * second database round trip the route-model binding already paid for.
+     */
+    public function updateBatchPrice(Request $request, Item $item, ItemBatch $batch): RedirectResponse
+    {
+        $validated = $request->validate([
+            'sales_price' => ['nullable', 'numeric', 'min:0'],
+            'sales_price_unit' => ['nullable', 'in:packs,pieces'],
+        ]);
+
+        $salesPiecePrice = null;
+
+        if (($validated['sales_price'] ?? null) !== null) {
+            $packSize = max(1, (int) $item->pack_size);
+            $salesPiecePrice = ($validated['sales_price_unit'] ?? 'pieces') === 'packs'
+                ? Money::divide($validated['sales_price'], $packSize)
+                : Money::format($validated['sales_price']);
+        }
+
+        $this->items->setBatchPrice($batch, $salesPiecePrice);
+
+        return redirect()->route('inventory.show', $item)
+            ->with('status', "{$batch->batch_number}'s price updated.");
     }
 
     // -----------------------------------------------------------------------

@@ -6,6 +6,7 @@ use App\Exceptions\ItemException;
 use App\Models\Item;
 use App\Models\ItemBatch;
 use App\Support\BusinessDate;
+use App\Support\Money;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -299,6 +300,25 @@ class ItemService
 
             return $batch;
         });
+    }
+
+    /**
+     * Correct a batch's own price after it was already received - the field
+     * itself is the one that needs fixing without a new delivery: the batch
+     * existed before ItemBatch.sales_price did, or whoever received it left
+     * it blank and the item's price has since moved on, and this lot was
+     * supposed to keep selling at what it actually cost.
+     *
+     * Null clears it back to "sells at the item's price" (Item::piecePriceForBatch()).
+     * No ledger write: price has no bearing on quantity, so there is nothing
+     * here for RULE 2's append-only rule to protect.
+     */
+    public function setBatchPrice(ItemBatch $batch, string|float|int|null $salesPrice): void
+    {
+        $batch->sales_price = $salesPrice === null ? null : Money::format($salesPrice);
+        $batch->save();
+
+        Log::info('batch price corrected', ['batch' => $batch->batch_number, 'item' => $batch->item_uuid]);
     }
 
     // -----------------------------------------------------------------------

@@ -67,9 +67,18 @@ Route::middleware('auth')->group(function () {
         Route::get('inventory/{item}/adjust', [InventoryController::class, 'adjustForm'])->name('inventory.adjust.form');
         Route::post('inventory/{item}/adjust', [InventoryController::class, 'adjust'])->name('inventory.adjust');
 
-        // Manager/owner only, and only for an item with no stock movement at
-        // all - see ItemService::delete. Anything that has been received or
-        // sold is deactivated instead, never deleted.
+        // Correcting a batch already received - its price, specifically. The
+        // rest of a batch (quantity, expiry) is append-only like everything
+        // else the ledger touches; price is the one field a batch can be
+        // wrong about on day one and need fixing without receiving it again.
+        Route::put('inventory/{item}/batches/{batch}/price', [InventoryController::class, 'updateBatchPrice'])
+            ->name('inventory.batches.price');
+
+        // Manager/owner by default; an owner may name one staff member for it
+        // individually (users.can_delete_inventory) without promoting them -
+        // see AuthServiceProvider. Not gated by stock history (ItemService::delete):
+        // its batches are removed with it, and old paperwork naming it shows a
+        // blank item name from then on.
         Route::delete('inventory/{item}', [InventoryController::class, 'destroy'])
             ->middleware('can:delete-item')->name('inventory.destroy');
     });

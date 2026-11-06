@@ -161,11 +161,28 @@
                                 <td class="qty text-secondary">{{ $batch->received_qty }}</td>
                                 <td class="qty {{ $left < 0 ? 'stock-negative' : '' }}">{{ $left }}</td>
                                 <td class="money">{{ $batch->purchase_price }}</td>
-                                <td class="money">
-                                    {{ $item->piecePriceForBatch($batch) }}
+                                <td>
+                                    {{--
+                                        Editable in place: the one field a
+                                        batch can be wrong about on day one
+                                        without a new delivery to fix it with
+                                        (ItemService::setBatchPrice). Same
+                                        per-piece unit as Cost, left of it.
+                                    --}}
+                                    <form method="POST"
+                                          action="{{ route('inventory.batches.price', [$item, $batch]) }}"
+                                          class="d-flex gap-1 justify-content-end">
+                                        @csrf
+                                        @method('PUT')
+                                        <input type="number" step="0.01" min="0" inputmode="decimal"
+                                               class="form-control form-control-sm money" style="max-width: 6rem"
+                                               name="sales_price" value="{{ $batch->sales_price }}"
+                                               placeholder="{{ $item->piecePrice() }}">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">Save</button>
+                                    </form>
                                     @if ($batch->sales_price === null)
                                         {{-- The item's price, not this batch's own. --}}
-                                        <span class="small text-secondary d-block">(item's price)</span>
+                                        <div class="small text-secondary text-end">item's price</div>
                                     @endif
                                 </td>
                             </tr>

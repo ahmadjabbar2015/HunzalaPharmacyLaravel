@@ -360,6 +360,41 @@ it('gives a batch its own price, converting per-pack to per-piece like cost does
         ->and($item->piecePrice())->toBe('10.00');
 });
 
+// ---------------------------------------------------------------------------
+// correcting a batch's price after the fact
+// ---------------------------------------------------------------------------
+
+it("corrects an already-received batch's price without touching the item's", function () {
+    // The actual shape of the problem this field exists for: stock was
+    // reordered at a lower cost before the old delivery sold out, so the
+    // item's price moved to the new one (175) - but the old batch, still
+    // on the shelf, was bought at the old price (200) and should keep
+    // selling at it until it runs out.
+    $this->item->forceFill(['sales_price' => '175.00'])->save();
+    $oldBatch = ItemBatch::factory()->for($this->item, 'item')->create(['batch_number' => 'OLD-LOT']);
+    $this->stock->receive(itemUuid: $this->item->uuid, batchUuid: $oldBatch->uuid, quantity: 20, deviceId: DEVICE);
+
+    $this->actingAs($this->staff)
+        ->put(route('inventory.batches.price', [$this->item, $oldBatch]), ['sales_price' => '200.00'])
+        ->assertRedirect(route('inventory.show', $this->item));
+
+    expect($oldBatch->fresh()->sales_price)->toBe('200.00')
+        ->and($this->item->fresh()->piecePriceForBatch($oldBatch->fresh()))->toBe('200.00')
+        // Untouched: this item's own price is still 175, for whichever
+        // batch sells next.
+        ->and($this->item->fresh()->sales_price)->toBe('175.00');
+});
+
+it("clears a batch's price back to the item's by submitting it blank", function () {
+    $batch = ItemBatch::factory()->for($this->item, 'item')->create(['sales_price' => '17.50']);
+
+    $this->actingAs($this->staff)
+        ->put(route('inventory.batches.price', [$this->item, $batch]), ['sales_price' => ''])
+        ->assertRedirect(route('inventory.show', $this->item));
+
+    expect($batch->fresh()->sales_price)->toBeNull();
+});
+
 it('requires an expiry date to receive', function () {
     // FEFO orders by it, so a batch without one could never be ordered and
     // therefore never sold.

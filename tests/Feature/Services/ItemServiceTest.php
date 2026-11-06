@@ -127,6 +127,26 @@ it('moves received stock through the ledger', function () {
         ->and((int) $ledger->qty_change)->toBe(40);
 });
 
+it('leaves a batch with no price of its own when none is given', function () {
+    $batch = receiveBatch($this->item->uuid, 'B-NO-PRICE', '2027-01-01', 10);
+
+    expect($batch->sales_price)->toBeNull()
+        ->and($this->item->piecePriceForBatch($batch))->toBe($this->item->piecePrice());
+});
+
+it('gives a batch its own price, independent of the item\'s', function () {
+    $batch = $this->items->receiveNewBatch(
+        itemUuid: $this->item->uuid, batchNumber: 'B-PRICED', expiryDate: '2027-01-01',
+        quantity: 10, purchasePrice: '10.00', deviceId: DEVICE, salesPrice: '17.50',
+    );
+
+    expect($batch->sales_price)->toBe('17.50')
+        ->and($this->item->piecePriceForBatch($batch))->toBe('17.50')
+        // The item's own price is untouched - repricing one batch must not
+        // reprice the catalogue.
+        ->and($this->item->piecePrice())->toBe('20.00');
+});
+
 it('requires an expiry date and a positive quantity', function () {
     // Expiry is mandatory because sales pick the batch expiring first. A batch
     // with no expiry could not be ordered, so it could never be sold.

@@ -216,6 +216,10 @@ class InventoryController extends Controller
             'quantity_unit' => ['nullable', 'in:packs,pieces'],
             'purchase_price' => ['required', 'numeric', 'min:0'],
             'price_unit' => ['nullable', 'in:packs,pieces'],
+            // Blank means this batch sells at the item's own price - see
+            // Item::piecePriceForBatch().
+            'sales_price' => ['nullable', 'numeric', 'min:0'],
+            'sales_price_unit' => ['nullable', 'in:packs,pieces'],
         ]);
 
         $packSize = max(1, (int) $item->pack_size);
@@ -234,6 +238,14 @@ class InventoryController extends Controller
             ? Money::divide($validated['purchase_price'], $packSize)
             : Money::format($validated['purchase_price']);
 
+        $salesPiecePrice = null;
+
+        if (($validated['sales_price'] ?? null) !== null) {
+            $salesPiecePrice = ($validated['sales_price_unit'] ?? 'pieces') === 'packs'
+                ? Money::divide($validated['sales_price'], $packSize)
+                : Money::format($validated['sales_price']);
+        }
+
         try {
             $this->items->receiveNewBatch(
                 itemUuid: $item->uuid,
@@ -244,6 +256,7 @@ class InventoryController extends Controller
                 deviceId: config('pharmacy.device_id'),
                 mfgDate: $validated['mfg_date'] ?? null,
                 performedByUserUuid: $request->user()->uuid,
+                salesPrice: $salesPiecePrice,
             );
         } catch (ItemException $e) {
             return back()->withInput()->withErrors(['batch_number' => $e->getMessage()]);

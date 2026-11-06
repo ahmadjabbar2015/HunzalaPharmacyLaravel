@@ -324,6 +324,42 @@ it('receives stock into a new batch', function () {
         ->and($ledger->performed_by_user_uuid)->toBe($this->staff->uuid);
 });
 
+it('leaves a batch with no price of its own when the field is left blank', function () {
+    $this->actingAs($this->staff)->post(route('inventory.receive', $this->item), [
+        'batch_number' => 'B-NO-PRICE',
+        'expiry_date' => '2027-06-01',
+        'quantity' => 50,
+        'purchase_price' => '12.50',
+        // sales_price omitted - the normal case.
+    ])->assertRedirect(route('inventory.show', $this->item));
+
+    expect(ItemBatch::where('batch_number', 'B-NO-PRICE')->first()->sales_price)->toBeNull();
+});
+
+it('gives a batch its own price, converting per-pack to per-piece like cost does', function () {
+    $item = Item::factory()->create(['item_code' => 'PACK-5', 'pack_size' => 5, 'sales_price' => '50.00']);
+
+    $this->actingAs($this->staff)->post(route('inventory.receive', $item), [
+        'batch_number' => 'B-CHEAPER',
+        'expiry_date' => '2027-06-01',
+        'quantity' => 2,
+        'quantity_unit' => 'packs',
+        'purchase_price' => '30.00',
+        'price_unit' => 'packs',
+        // This lot cost less and is meant to sell for less - 40.00 a pack,
+        // not the item's usual 50.00.
+        'sales_price' => '40.00',
+        'sales_price_unit' => 'packs',
+    ])->assertRedirect(route('inventory.show', $item));
+
+    $batch = ItemBatch::where('batch_number', 'B-CHEAPER')->first();
+
+    expect($batch->sales_price)->toBe('8.00')     // 40.00 / 5 pieces per pack
+        ->and($item->piecePriceForBatch($batch))->toBe('8.00')
+        // The item's own price is untouched.
+        ->and($item->piecePrice())->toBe('10.00');
+});
+
 it('requires an expiry date to receive', function () {
     // FEFO orders by it, so a batch without one could never be ordered and
     // therefore never sold.

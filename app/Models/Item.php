@@ -72,6 +72,26 @@ class Item extends BaseModel
     }
 
     /**
+     * What one piece sells for when it is drawn from a specific batch.
+     *
+     * The batch's own price wins when it is set - stock is routinely
+     * reordered before the shelf empties, so an old batch bought at one cost
+     * and a new one bought at another sit side by side, and repricing the
+     * item for the new delivery must not silently reprice what is left of
+     * the old one. A batch received without a price of its own (every batch
+     * before ItemBatch.sales_price existed, and any received since without
+     * bothering to set it) falls back to piecePrice(), unchanged.
+     */
+    public function piecePriceForBatch(?ItemBatch $batch): string
+    {
+        if ($batch !== null && $batch->sales_price !== null) {
+            return Money::format($batch->sales_price);
+        }
+
+        return $this->piecePrice();
+    }
+
+    /**
      * What a whole pack sells for: the piece price times the pack size, always.
      *
      * Derived from piecePrice() in BOTH cases rather than returning sales_price

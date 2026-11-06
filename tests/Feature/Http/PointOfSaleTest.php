@@ -110,6 +110,26 @@ it('adds an item and picks its batch by FEFO', function () {
     expect(collect($component->get('cart'))->first()['batch_uuid'])->toBe($earlier->uuid);
 });
 
+it('charges a batch its own price when it has one, not the item\'s', function () {
+    // Stock is routinely reordered before the shelf empties, so an old batch
+    // bought at one cost and a new one bought at another sit side by side.
+    // The item's own price (100.00) must not leak onto a batch priced on
+    // purpose - the whole reason this field exists.
+    $this->batch->forceFill(['sales_price' => '87.50'])->save();
+
+    $component = Livewire::test(PointOfSale::class)->call('addItem', $this->item->uuid);
+
+    expect(collect($component->get('cart'))->first()['rate'])->toBe('87.50');
+});
+
+it('falls back to the item\'s price when the batch has none of its own', function () {
+    // $this->batch never sets sales_price - the default, and every batch
+    // received before this feature existed.
+    $component = Livewire::test(PointOfSale::class)->call('addItem', $this->item->uuid);
+
+    expect(collect($component->get('cart'))->first()['rate'])->toBe('100.00');
+});
+
 it('increments an identical line rather than repeating it', function () {
     // What someone scanning three boxes of the same thing expects to see.
     $component = Livewire::test(PointOfSale::class)

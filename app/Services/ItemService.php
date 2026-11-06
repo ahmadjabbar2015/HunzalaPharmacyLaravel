@@ -229,6 +229,9 @@ class ItemService
         ?string $mfgDate = null,
         ?string $supplierUuid = null,
         ?string $performedByUserUuid = null,
+        // Null means this batch has no price of its own and sells at the
+        // item's price - see Item::piecePriceForBatch().
+        string|float|int|null $salesPrice = null,
     ): ItemBatch {
         $batchNumber = trim($batchNumber);
 
@@ -265,7 +268,7 @@ class ItemService
          */
         return DB::transaction(function () use (
             $itemUuid, $batchNumber, $expiryDate, $quantity, $purchasePrice,
-            $deviceId, $mfgDate, $supplierUuid, $performedByUserUuid
+            $deviceId, $mfgDate, $supplierUuid, $performedByUserUuid, $salesPrice
         ) {
             $batch = ItemBatch::create([
                 'item_uuid' => $itemUuid,
@@ -274,6 +277,7 @@ class ItemService
                 'expiry_date' => $expiryDate,
                 'received_qty' => $quantity,
                 'purchase_price' => $purchasePrice,
+                'sales_price' => $salesPrice,
                 'received_date' => BusinessDate::today(),
                 'supplier_uuid' => $supplierUuid,
                 'origin_device_id' => $deviceId,

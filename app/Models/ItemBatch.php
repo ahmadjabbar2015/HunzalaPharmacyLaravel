@@ -30,6 +30,9 @@ class ItemBatch extends BaseModel
             'received_qty' => 'integer',
             'current_qty' => 'integer',
             'purchase_price' => 'decimal:2',
+            // Per piece, like Item::retail_price - null means this batch has
+            // no price of its own and sells at whatever the item charges.
+            'sales_price' => 'decimal:2',
             'is_expired' => 'boolean',
         ];
     }

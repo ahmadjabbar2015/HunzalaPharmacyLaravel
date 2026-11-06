@@ -74,6 +74,38 @@
                             <div class="form-text">What was paid for this lot. Stored per piece.</div>
                         </div>
 
+                        <div class="col-6 col-md-3">
+                            <label for="sales_price" class="form-label">
+                                Sells at <span class="text-secondary">(optional)</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" min="0" inputmode="decimal"
+                                       class="form-control money @error('sales_price') is-invalid @enderror"
+                                       id="sales_price" name="sales_price" value="{{ old('sales_price') }}">
+                                <select class="form-select" id="sales_price_unit" name="sales_price_unit"
+                                        style="max-width: 7.5rem">
+                                    <option value="packs" @selected(old('sales_price_unit', 'packs') === 'packs')>per pack</option>
+                                    <option value="pieces" @selected(old('sales_price_unit') === 'pieces')>per piece</option>
+                                </select>
+                            </div>
+                            @error('sales_price')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            <div class="form-text">
+                                {{--
+                                    Stock is routinely reordered before the shelf
+                                    empties, so an old batch and a new one at a
+                                    different cost often sit side by side - leave
+                                    this blank and the till keeps charging
+                                    {{ $item->packPrice() }} for this batch;
+                                    set it to give this lot its own price,
+                                    without touching what the rest of the
+                                    catalogue sells at.
+                                --}}
+                                Leave blank to sell at the item's usual price
+                                ({{ $item->packPrice() }}/pack). Set it only if
+                                this lot should be priced differently.
+                            </div>
+                        </div>
+
                         <div class="col-6 col-md-4">
                             <label for="expiry_date" class="form-label">Expires</label>
                             <input type="date" class="form-control @error('expiry_date') is-invalid @enderror"

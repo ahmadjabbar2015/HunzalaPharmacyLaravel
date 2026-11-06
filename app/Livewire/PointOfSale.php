@@ -211,8 +211,14 @@ class PointOfSale extends Component
          * rate, so the stock movement and the money agree with each other and a
          * customer buying a box and a customer buying ten singles are charged
          * the same.
+         *
+         * Priced from the batch just chosen, not the item alone: a batch
+         * bought at a different cost (reordering before the shelf is empty
+         * means an old and a new batch often sit side by side) can carry its
+         * own price, and the till must charge whichever batch it is actually
+         * selling from.
          */
-        $rate = $item->piecePrice();
+        $rate = $item->piecePriceForBatch($batch);
         $quantity = $wholePack ? max(1, (int) $item->pack_size) : 1;
 
         // An identical line - same item, same batch, same rate - increments

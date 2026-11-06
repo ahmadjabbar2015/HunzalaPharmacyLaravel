@@ -134,6 +134,7 @@
                             <th class="text-end">Received</th>
                             <th class="text-end">Left</th>
                             <th class="text-end">Cost</th>
+                            <th class="text-end">Sells at</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -160,10 +161,17 @@
                                 <td class="qty text-secondary">{{ $batch->received_qty }}</td>
                                 <td class="qty {{ $left < 0 ? 'stock-negative' : '' }}">{{ $left }}</td>
                                 <td class="money">{{ $batch->purchase_price }}</td>
+                                <td class="money">
+                                    {{ $item->piecePriceForBatch($batch) }}
+                                    @if ($batch->sales_price === null)
+                                        {{-- The item's price, not this batch's own. --}}
+                                        <span class="small text-secondary d-block">(item's price)</span>
+                                    @endif
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-secondary py-3 text-center">
+                                <td colspan="6" class="text-secondary py-3 text-center">
                                     Nothing received yet. This item cannot be sold from stock until it is.
                                 </td>
                             </tr>

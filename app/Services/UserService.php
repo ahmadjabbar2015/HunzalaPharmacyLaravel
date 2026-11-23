@@ -28,7 +28,10 @@ class UserService
      * trail. Credentials are absent too - they go through PinService, which owns
      * hashing, format rules and the audit rows that go with a change.
      */
-    public const EDITABLE_FIELDS = ['full_name', 'phone', 'role', 'can_delete_inventory'];
+    public const EDITABLE_FIELDS = [
+        'full_name', 'phone', 'role',
+        'can_delete_inventory', 'can_manage_inventory', 'can_view_daily_sale_detail',
+    ];
 
     public function __construct(
         private readonly PinService $pins,

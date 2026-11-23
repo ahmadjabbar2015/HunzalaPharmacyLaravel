@@ -123,6 +123,25 @@ it('grants a staff member delete-item access individually, off by default', func
     expect($staff->fresh()->can_delete_inventory)->toBeFalse();
 });
 
+it('scopes a till-only hire to selling and the one report, off by default', function () {
+    // The exact shape the owner asked for: no inventory, no reports except
+    // Daily Sale Detail, nothing extra assumed.
+    $staff = User::factory()->create(['username' => 'wahab', 'full_name' => 'Wahab']);
+
+    expect($staff->can_manage_inventory)->toBeTrue()      // the default, before narrowing
+        ->and($staff->can_view_daily_sale_detail)->toBeFalse();
+
+    $this->actingAs($this->owner)->put(route('staff.update', $staff), [
+        'full_name' => 'Wahab',
+        'role' => 'staff',
+        'can_view_daily_sale_detail' => '1',
+        // can_manage_inventory omitted - the unticked-checkbox case.
+    ])->assertRedirect(route('staff.index'));
+
+    expect($staff->fresh()->can_manage_inventory)->toBeFalse()
+        ->and($staff->fresh()->can_view_daily_sale_detail)->toBeTrue();
+});
+
 it('deactivates an account without deleting it', function () {
     $staff = User::factory()->create(['username' => 'ahmed']);
 

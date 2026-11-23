@@ -63,6 +63,38 @@
                                 only for naming one staff member without promoting them.
                             </div>
                         </div>
+
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="1"
+                                       id="can_manage_inventory" name="can_manage_inventory"
+                                       @checked(old('can_manage_inventory', $staff->can_manage_inventory))>
+                                <label class="form-check-label" for="can_manage_inventory">
+                                    Can manage inventory (add items, receive and adjust stock)
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                On by default — every account can today. Turn it off for a
+                                till-only hire who should only sell and print a bill, without
+                                touching this for anyone else.
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="1"
+                                       id="can_view_daily_sale_detail" name="can_view_daily_sale_detail"
+                                       @checked(old('can_view_daily_sale_detail', $staff->can_view_daily_sale_detail))>
+                                <label class="form-check-label" for="can_view_daily_sale_detail">
+                                    Can view the Daily Sale Detail report
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                Off by default — reports are manager/owner only otherwise. This
+                                hands over just the one print report, itemised invoice by
+                                invoice, not the rest of Reports.
+                            </div>
+                        </div>
                     </div>
 
                     <div class="mt-4">

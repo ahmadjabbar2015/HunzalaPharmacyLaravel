@@ -48,8 +48,15 @@ class AuthServiceProvider extends ServiceProvider
         // real control.
         Gate::define('process-return', fn (User $user) => true);
 
-        // Receiving stock and adjusting it. Staff unpack the deliveries.
-        Gate::define('manage-inventory', fn (User $user) => true);
+        /*
+         * Receiving stock and adjusting it. Staff unpack the deliveries by
+         * default (users.can_manage_inventory defaults true, so every
+         * existing account keeps today's access) - an owner can narrow a
+         * specific till-only hire to just selling and printing a bill by
+         * turning this off for them from Staff > Edit, without touching
+         * manage-inventory for anyone else.
+         */
+        Gate::define('manage-inventory', fn (User $user) => $user->isManagerOrOwner() || $user->can_manage_inventory);
         Gate::define('manage-customers', fn (User $user) => true);
         Gate::define('manage-purchasing', fn (User $user) => true);
 
@@ -79,6 +86,18 @@ class AuthServiceProvider extends ServiceProvider
 
         // Reports show margins, staff-by-staff takings and variance history.
         Gate::define('view-reports', fn (User $user) => $user->isManagerOrOwner());
+
+        /*
+         * The one report a staff member can be named for individually
+         * (users.can_view_daily_sale_detail, defaults false), separate from
+         * view-reports above: the print sheet, itemised invoice by invoice,
+         * without the margins and variance history the rest of Reports
+         * shows. Anyone who already has view-reports has this too.
+         */
+        Gate::define(
+            'view-daily-sale-detail',
+            fn (User $user) => $user->isManagerOrOwner() || $user->can_view_daily_sale_detail
+        );
 
         // The integrity screen can trigger a full cache rebuild.
         Gate::define('view-integrity', fn (User $user) => $user->isManagerOrOwner());

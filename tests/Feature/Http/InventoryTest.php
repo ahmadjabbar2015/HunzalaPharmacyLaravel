@@ -31,6 +31,24 @@ beforeEach(function () {
 });
 
 // ---------------------------------------------------------------------------
+// scoping a staff member out of inventory entirely
+// ---------------------------------------------------------------------------
+
+it('locks a staff member out of inventory once can_manage_inventory is off', function () {
+    // The default stays open for everyone else; this is narrowed per
+    // account (Staff > Edit), not a role change.
+    $tillOnly = User::factory()->create(['username' => 'wahab', 'can_manage_inventory' => false]);
+
+    $this->actingAs($tillOnly)->get(route('inventory.index'))->assertForbidden();
+    $this->actingAs($tillOnly)->get(route('inventory.show', $this->item))->assertForbidden();
+    $this->actingAs($tillOnly)->get(route('inventory.adjust.form', $this->item))->assertForbidden();
+    $this->actingAs($tillOnly)->get(route('inventory.receive.form', $this->item))->assertForbidden();
+
+    // The default account is unaffected.
+    $this->actingAs($this->staff)->get(route('inventory.index'))->assertOk();
+});
+
+// ---------------------------------------------------------------------------
 // the list
 // ---------------------------------------------------------------------------
 

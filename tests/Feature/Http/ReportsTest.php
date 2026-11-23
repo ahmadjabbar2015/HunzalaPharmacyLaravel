@@ -80,6 +80,29 @@ it('offers reports in the nav to a manager but not to a cashier', function () {
         ->assertDontSee(route('reports.index'), escape: false);
 });
 
+it('lets a staff member named for it reach only Daily Sale Detail, not the rest of Reports', function () {
+    $tillOnly = User::factory()->create(['username' => 'wahab', 'can_view_daily_sale_detail' => true]);
+
+    $this->actingAs($tillOnly)->get(route('reports.daily-sale-detail'))->assertOk();
+
+    // Still locked out of everything view-reports gates.
+    $this->actingAs($tillOnly)->get(route('reports.index'))->assertForbidden();
+    $this->actingAs($tillOnly)->get(route('reports.daily-sales'))->assertForbidden();
+    $this->actingAs($tillOnly)->get(route('reports.inventory'))->assertForbidden();
+});
+
+it('shows a direct Daily Sale Detail link in the nav for that account, not the Reports hub', function () {
+    $tillOnly = User::factory()->create(['username' => 'wahab', 'can_view_daily_sale_detail' => true]);
+
+    // reports.index's URL is a literal prefix of reports.daily-sale-detail's
+    // (/reports vs /reports/daily-sale-detail), so the href is matched exactly
+    // rather than as a substring - otherwise the hub's URL would appear to be
+    // "found" inside the other link's href and the assertion would lie.
+    $this->actingAs($tillOnly)->get(route('dashboard'))
+        ->assertSee('href="'.route('reports.daily-sale-detail').'"', escape: false)
+        ->assertDontSee('href="'.route('reports.index').'"', escape: false);
+});
+
 it('sends a guest to the login form', function () {
     $this->get(route('reports.index'))->assertRedirect(route('login'));
 });

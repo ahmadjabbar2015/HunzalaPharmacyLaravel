@@ -27,6 +27,8 @@ class User extends BaseModel implements Authenticatable, AuthorizableContract
         'is_active' => true,
         'pin_failed_attempts' => 0,
         'can_delete_inventory' => false,
+        'can_manage_inventory' => true,
+        'can_view_daily_sale_detail' => false,
     ];
 
     protected function modelCasts(): array
@@ -36,6 +38,8 @@ class User extends BaseModel implements Authenticatable, AuthorizableContract
             'pin_failed_attempts' => 'integer',
             'pin_locked_until' => 'datetime',
             'can_delete_inventory' => 'boolean',
+            'can_manage_inventory' => 'boolean',
+            'can_view_daily_sale_detail' => 'boolean',
         ];
     }
 

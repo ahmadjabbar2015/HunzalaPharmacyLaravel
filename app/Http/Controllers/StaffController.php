@@ -84,11 +84,13 @@ class StaffController extends Controller
             'role' => ['required', Rule::in(config('pharmacy.user_roles'))],
         ]);
 
-        // An unticked checkbox sends nothing, so this is read from the
+        // An unticked checkbox sends nothing, so each is read from the
         // request rather than $validated - a manager/owner already passes
-        // delete-item through their role (AuthServiceProvider), so this flag
-        // only ever matters for staff, but it is stored for anyone.
+        // every one of these through their role (AuthServiceProvider), so
+        // they only ever matter for staff, but are stored for anyone.
         $validated['can_delete_inventory'] = $request->boolean('can_delete_inventory');
+        $validated['can_manage_inventory'] = $request->boolean('can_manage_inventory');
+        $validated['can_view_daily_sale_detail'] = $request->boolean('can_view_daily_sale_detail');
 
         try {
             $this->users->update(

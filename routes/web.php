@@ -198,12 +198,18 @@ Route::middleware('auth')->group(function () {
     // rather than a query parameter so it can be linked and bookmarked without
     // a browser deciding to render it instead.
     // ---------------------------------------------------------------------
+    // Daily Sale Detail is gated separately (can:view-daily-sale-detail) so a
+    // staff member can be named for just this one print report without
+    // view-reports and the rest of this group that comes with it.
+    Route::middleware('can:view-daily-sale-detail')->prefix('reports')->group(function () {
+        Route::get('daily-sale-detail', [ReportsController::class, 'dailySaleDetail'])->name('reports.daily-sale-detail');
+    });
+
     Route::middleware('can:view-reports')->prefix('reports')->group(function () {
         Route::get('/', [ReportsController::class, 'index'])->name('reports.index');
 
         Route::get('daily-sales', [ReportsController::class, 'dailySales'])->name('reports.daily-sales');
         Route::get('daily-sales.csv', [ReportsController::class, 'dailySalesCsv'])->name('reports.daily-sales.csv');
-        Route::get('daily-sale-detail', [ReportsController::class, 'dailySaleDetail'])->name('reports.daily-sale-detail');
 
         Route::get('sessions', [ReportsController::class, 'sessions'])->name('reports.sessions');
         Route::get('sessions/{session}', [ReportsController::class, 'sessionSummary'])->name('reports.session');

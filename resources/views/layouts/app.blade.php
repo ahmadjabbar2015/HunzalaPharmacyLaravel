@@ -87,6 +87,16 @@
                         <li class="nav-item">
                             <a class="nav-link @active('reports.*')" href="{{ route('reports.index') }}">Reports</a>
                         </li>
+                    @elsecan('view-daily-sale-detail')
+                        {{--
+                            Named for just this one report (users.can_view_daily_sale_detail):
+                            straight to it, not the hub - reports.index is
+                            still view-reports only, and would 403 for them.
+                        --}}
+                        <li class="nav-item">
+                            <a class="nav-link @active('reports.daily-sale-detail')"
+                               href="{{ route('reports.daily-sale-detail') }}">Daily sale detail</a>
+                        </li>
                     @endcan
 
                     <li class="nav-item">

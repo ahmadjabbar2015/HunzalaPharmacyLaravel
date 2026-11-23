@@ -166,6 +166,30 @@ it('lists every invoice for today, itemised, by default', function () {
         ->assertSee('24.00');
 });
 
+it('numbers the printed pages once there is more than one page of invoices', function () {
+    // The default beforeEach sale plus 6 more makes 7 - one over the
+    // 6-per-page estimate, so this must force a second page.
+    foreach (range(1, 6) as $n) {
+        app(\App\Services\SaleService::class)->create(
+            lines: [new \App\Services\CartLine($this->item->uuid, 1, '12.00', $this->batch->uuid)],
+            staffMemberUuid: $this->cashier->uuid,
+            deviceId: DEVICE,
+        );
+    }
+
+    $this->actingAs($this->owner)->get(route('reports.daily-sale-detail'))
+        ->assertOk()
+        ->assertSee('Page 1 of 2')
+        ->assertSee('Page 2 of 2');
+});
+
+it('prints a single page as "Page 1 of 1" rather than omitting the number', function () {
+    $this->actingAs($this->owner)->get(route('reports.daily-sale-detail'))
+        ->assertOk()
+        ->assertSee('Page 1 of 1')
+        ->assertDontSee('Page 2');
+});
+
 it('respects a from/to range on the detail report', function () {
     $yesterday = BusinessDate::for()->subDay()->toDateString();
 

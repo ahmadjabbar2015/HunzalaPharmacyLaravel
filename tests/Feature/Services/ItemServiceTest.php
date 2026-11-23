@@ -314,6 +314,27 @@ it('breaks a tied expiry by received date, oldest delivery first', function () {
     expect($this->items->sellableBatch($this->item->uuid)->uuid)->toBe($second->uuid);
 });
 
+it('breaks a tie on BOTH expiry and received date by created_at', function () {
+    // Two deliveries of the same lot arriving on the same calendar day - a
+    // bulk receipt, a correction entered right after the first - tie on
+    // received_date too (it is a DATE, not a timestamp), and without this
+    // second tiebreaker the two were unordered again, confirmed live: a
+    // verification script receiving both within the same request hit
+    // exactly this and sold the newly-priced batch first.
+    $this->travelTo('2026-09-01 10:00:00');
+    $first = receiveBatch($this->item->uuid, 'LOT-SAMEDAY-A', '2027-06-01', 5);
+
+    $this->travelTo('2026-09-01 10:00:05');
+    $second = receiveBatch($this->item->uuid, 'LOT-SAMEDAY-B', '2027-06-01', 5);
+
+    expect($first->received_date->toDateString())->toBe($second->received_date->toDateString())
+        ->and($this->items->sellableBatch($this->item->uuid)->uuid)->toBe($first->uuid);
+
+    $this->stock->sell(itemUuid: $this->item->uuid, batchUuid: $first->uuid, quantity: 5, deviceId: DEVICE);
+
+    expect($this->items->sellableBatch($this->item->uuid)->uuid)->toBe($second->uuid);
+});
+
 it('returns nothing sellable for an item with no batches', function () {
     $bare = $this->items->create(itemCode: 'BARE', itemName: 'No batches', deviceId: DEVICE);
 

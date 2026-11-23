@@ -419,14 +419,27 @@ class ItemService
         $batches = ItemBatch::query()
             ->where('item_uuid', $itemUuid)
             ->orderBy('expiry_date')
-            // Tiebreaker for two batches sharing an expiry date - which
-            // happens on purpose when the same delivery arrives again at a
-            // new price and the manufacturer's lot and expiry have not
-            // changed (batch_number still has to differ - uq_item_batch -
-            // but nothing requires the expiry to). Without this the two are
-            // unordered, and the one priced for a now-stale delivery could
-            // outlive the one that should sell first.
+            /*
+             * Tiebreaker for two batches sharing an expiry date - which
+             * happens on purpose when the same delivery arrives again at a
+             * new price and the manufacturer's lot and expiry have not
+             * changed (batch_number still has to differ - uq_item_batch -
+             * but nothing requires the expiry to). Without this the two are
+             * unordered, and the one priced for a now-stale delivery could
+             * outlive the one that should sell first.
+             *
+             * received_date alone is not enough: it is a DATE, not a
+             * timestamp, so two batches received the same day tie on it too
+             * and fall back to whatever order MySQL feels like - confirmed
+             * live, not hypothetical, the day this shipped. created_at is a
+             * full timestamp (syncColumns) and never ties between two
+             * separate receiveNewBatch() calls, so it is the real tiebreaker;
+             * received_date stays first for readability - it is usually all
+             * that is needed - and to prefer the business-dated order over
+             * clock time on the rare cross-midnight receipt.
+             */
             ->orderBy('received_date')
+            ->orderBy('created_at')
             ->get();
 
         if ($batches->isEmpty()) {
@@ -530,6 +543,7 @@ class ItemService
             ->tap($filter)
             ->orderBy('expiry_date')
             ->orderBy('received_date')
+            ->orderBy('created_at')
             ->get();
 
         if ($batches->isEmpty()) {

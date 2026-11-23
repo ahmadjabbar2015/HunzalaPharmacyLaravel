@@ -88,7 +88,7 @@ class InventoryController extends Controller
 
     public function show(Item $item): View
     {
-        $batches = $item->batches()->orderBy('expiry_date')->orderBy('received_date')->get();
+        $batches = $item->batches()->orderBy('expiry_date')->orderBy('received_date')->orderBy('created_at')->get();
         $batchQuantities = $this->stock->batchQuantitiesFor($batches->pluck('uuid')->all());
 
         return view('inventory.show', [
@@ -301,7 +301,7 @@ class InventoryController extends Controller
 
     public function adjustForm(Item $item): View
     {
-        $batches = $item->batches()->orderBy('expiry_date')->orderBy('received_date')->get();
+        $batches = $item->batches()->orderBy('expiry_date')->orderBy('received_date')->orderBy('created_at')->get();
 
         return view('inventory.adjust', [
             'item' => $item,

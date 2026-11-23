@@ -369,6 +369,7 @@ class ReportService
             ->whereIn('item_uuid', $items->modelKeys())
             ->orderBy('expiry_date')
             ->orderBy('received_date')
+            ->orderBy('created_at')
             ->get();
 
         // Two aggregate queries for the whole report, however many items and

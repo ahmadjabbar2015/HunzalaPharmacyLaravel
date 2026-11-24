@@ -37,13 +37,16 @@
 --}}
 <style>
     @media print {
-        .report-page {
+        {{--
+            An adjacent-sibling selector, not :first-child - the clinic
+            header now sits before the first .report-page (it prints once,
+            not per page), so the first page is no longer its parent's first
+            child. This still means exactly "every .report-page except the
+            first one", regardless of what precedes it.
+        --}}
+        .report-page + .report-page {
             break-before: page;
             page-break-before: always;
-        }
-        .report-page:first-child {
-            break-before: auto;
-            page-break-before: auto;
         }
         .report-invoice {
             break-inside: avoid;
@@ -65,29 +68,32 @@
             $pageCount = max(1, $pages->count());
         @endphp
 
+        {{--
+            The clinic header, once - not repeated per page. Only the page
+            number needs to survive onto every forced page break; the name,
+            address and date range belong to the document, not to each sheet
+            of it.
+        --}}
+        <div class="text-center mb-3">
+            <h2 class="h5 mb-0">Daily Sale Detail</h2>
+            <div class="fw-semibold">{{ $settings->shop_name ?? config('app.name') }}</div>
+            @if ($settings?->shop_address)
+                <div class="small text-secondary">{{ $settings->shop_address }}</div>
+            @endif
+            @if ($settings?->shop_phone)
+                <div class="small text-secondary">{{ $settings->shop_phone }}</div>
+            @endif
+            <div class="small text-secondary mt-1">
+                {{ \Carbon\CarbonImmutable::parse($report['from'])->format('d/m/Y') }}
+                to
+                {{ \Carbon\CarbonImmutable::parse($report['to'])->format('d/m/Y') }}
+            </div>
+        </div>
+
         @forelse ($pages as $pageIndex => $pageSales)
             <div class="report-page">
-                <div class="text-center mb-3">
-                    <div class="d-flex justify-content-end small text-secondary d-none d-print-block">
-                        Page {{ $pageIndex + 1 }} of {{ $pageCount }}
-                    </div>
-                    <h2 class="h5 mb-0">Daily Sale Detail</h2>
-                    <div class="fw-semibold">{{ $settings->shop_name ?? config('app.name') }}</div>
-                    @if ($settings?->shop_address)
-                        <div class="small text-secondary">{{ $settings->shop_address }}</div>
-                    @endif
-                    @if ($settings?->shop_phone)
-                        <div class="small text-secondary">{{ $settings->shop_phone }}</div>
-                    @endif
-                    <div class="small text-secondary mt-1">
-                        {{ \Carbon\CarbonImmutable::parse($report['from'])->format('d/m/Y') }}
-                        to
-                        {{ \Carbon\CarbonImmutable::parse($report['to'])->format('d/m/Y') }}
-                    </div>
-                    {{-- Visible on screen too, where "d-print-block" above is hidden. --}}
-                    <div class="small text-secondary d-print-none">
-                        Page {{ $pageIndex + 1 }} of {{ $pageCount }}
-                    </div>
+                <div class="small text-secondary text-end mb-2">
+                    Page {{ $pageIndex + 1 }} of {{ $pageCount }}
                 </div>
 
                 @foreach ($pageSales as $sale)

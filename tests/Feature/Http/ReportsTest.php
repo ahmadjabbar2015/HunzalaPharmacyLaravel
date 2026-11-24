@@ -183,6 +183,33 @@ it('numbers the printed pages once there is more than one page of invoices', fun
         ->assertSee('Page 2 of 2');
 });
 
+it('prints the clinic name and address once, not on every page', function () {
+    \App\Models\Setting::create([
+        'shop_name' => 'Heart & Family Clinic Pharmacy',
+        'receipt_width' => '80mm',
+    ]);
+
+    foreach (range(1, 6) as $n) {
+        app(\App\Services\SaleService::class)->create(
+            lines: [new \App\Services\CartLine($this->item->uuid, 1, '12.00', $this->batch->uuid)],
+            staffMemberUuid: $this->cashier->uuid,
+            deviceId: DEVICE,
+        );
+    }
+
+    $response = $this->actingAs($this->owner)->get(route('reports.daily-sale-detail'))
+        ->assertOk()
+        ->assertSee('Page 1 of 2')
+        ->assertSee('Page 2 of 2');
+
+    // The name also appears once in the nav brand and once in <title> - both
+    // outside the report body (print-hidden, but still in the markup), so
+    // the count is scoped to the report card itself.
+    $reportBody = strstr($response->getContent(), '<div class="card">');
+
+    expect(substr_count($reportBody, 'Heart &amp; Family Clinic Pharmacy'))->toBe(1);
+});
+
 it('prints a single page as "Page 1 of 1" rather than omitting the number', function () {
     $this->actingAs($this->owner)->get(route('reports.daily-sale-detail'))
         ->assertOk()
